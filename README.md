@@ -88,7 +88,7 @@ Para o primeiro acesso, utilize as contas pré-configuradas:
 
 1. **Clone o repositório:**
    ```bash
-   git clone [https://github.com/marowyck/agencia-viagens-pp.git](https://github.com/marowyck/agencia-viagens-pp.git)
+   git clone [https://github.com/marowyck/agencia-viagens.git](https://github.com/marowyck/agencia-viagens.git)
    cd agencia-viagens-pp
    ```
 
