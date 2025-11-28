@@ -9,13 +9,17 @@ public class DatabaseInitializer {
         try (Connection conn = ConnectionFactory.getConnection();
              Statement st = conn.createStatement()) {
 
+            st.execute("PRAGMA foreign_keys = ON;");
+
             st.executeUpdate(
                     "CREATE TABLE IF NOT EXISTS cliente (" +
                             "id INTEGER PRIMARY KEY AUTOINCREMENT," +
                             "nome TEXT NOT NULL," +
                             "cpf TEXT UNIQUE NOT NULL," +
                             "email TEXT," +
-                            "telefone TEXT" +
+                            "telefone TEXT," +
+                            "created_at TEXT DEFAULT CURRENT_TIMESTAMP," +
+                            "updated_at TEXT" +
                             ");"
             );
 
@@ -29,7 +33,9 @@ public class DatabaseInitializer {
                             "imposto_turismo REAL," +
                             "moeda TEXT," +
                             "taxa_cambio REAL," +
-                            "taxa_embarque REAL" +
+                            "taxa_embarque REAL," +
+                            "created_at TEXT DEFAULT CURRENT_TIMESTAMP," +
+                            "updated_at TEXT" +
                             ");"
             );
 
@@ -41,8 +47,10 @@ public class DatabaseInitializer {
                             "status TEXT CHECK(status IN ('Criada','Pendente','Confirmada','Cancelada','Expirada')) NOT NULL DEFAULT 'Criada'," +
                             "data_reserva TEXT NOT NULL," +
                             "valor_total REAL," +
-                            "FOREIGN KEY (cliente_id) REFERENCES cliente(id)," +
-                            "FOREIGN KEY (pacote_id) REFERENCES pacote(id)" +
+                            "created_at TEXT DEFAULT CURRENT_TIMESTAMP," +
+                            "updated_at TEXT," +
+                            "FOREIGN KEY (cliente_id) REFERENCES cliente(id) ON DELETE RESTRICT," +
+                            "FOREIGN KEY (pacote_id) REFERENCES pacote(id) ON DELETE RESTRICT" +
                             ");"
             );
 
@@ -53,7 +61,8 @@ public class DatabaseInitializer {
                             "metodo TEXT CHECK(metodo IN ('pix','cartao')) NOT NULL," +
                             "taxa REAL," +
                             "data_pagamento TEXT NOT NULL," +
-                            "FOREIGN KEY (reserva_id) REFERENCES reserva(id)" +
+                            "created_at TEXT DEFAULT CURRENT_TIMESTAMP," +
+                            "FOREIGN KEY (reserva_id) REFERENCES reserva(id) ON DELETE CASCADE" +
                             ");"
             );
 
@@ -62,8 +71,9 @@ public class DatabaseInitializer {
                             "id INTEGER PRIMARY KEY AUTOINCREMENT," +
                             "cliente_id INTEGER NOT NULL," +
                             "pacote_id INTEGER NOT NULL," +
-                            "FOREIGN KEY (cliente_id) REFERENCES cliente(id)," +
-                            "FOREIGN KEY (pacote_id) REFERENCES pacote(id)" +
+                            "created_at TEXT DEFAULT CURRENT_TIMESTAMP," +
+                            "FOREIGN KEY (cliente_id) REFERENCES cliente(id) ON DELETE CASCADE," +
+                            "FOREIGN KEY (pacote_id) REFERENCES pacote(id) ON DELETE CASCADE" +
                             ");"
             );
 
@@ -72,11 +82,51 @@ public class DatabaseInitializer {
                             "id INTEGER PRIMARY KEY AUTOINCREMENT," +
                             "usuario TEXT," +
                             "acao TEXT," +
-                            "data_hora TEXT NOT NULL" +
+                            "tela TEXT," +
+                            "tipo TEXT," +
+                            "ip_local TEXT," +
+                            "data_hora TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP" +
                             ");"
             );
 
-            System.out.println("Database initialized or already exists.");
+            st.executeUpdate(
+                    "CREATE TABLE IF NOT EXISTS usuario (" +
+                            "id INTEGER PRIMARY KEY AUTOINCREMENT," +
+                            "username TEXT UNIQUE NOT NULL," +
+                            "password_hash TEXT NOT NULL," +
+                            "perfil TEXT CHECK(perfil IN ('admin','atendente')) NOT NULL," +
+                            "nome TEXT," +
+                            "created_at TEXT DEFAULT CURRENT_TIMESTAMP," +
+                            "updated_at TEXT" +
+                            ");"
+            );
+
+            st.executeUpdate("CREATE INDEX IF NOT EXISTS idx_reserva_cliente ON reserva(cliente_id);");
+            st.executeUpdate("CREATE INDEX IF NOT EXISTS idx_reserva_pacote ON reserva(pacote_id);");
+            st.executeUpdate("CREATE INDEX IF NOT EXISTS idx_pagamento_reserva ON pagamento(reserva_id);");
+            st.executeUpdate("CREATE INDEX IF NOT EXISTS idx_cliente_cpf ON cliente(cpf);");
+            st.executeUpdate("CREATE INDEX IF NOT EXISTS idx_usuario_username ON usuario(username);");
+
+            String adminHash = "240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9";
+
+            String atendenteHash = "e94e143d3a999c2004bed70fdc93ae37470fb3c3c5cd328fa20fbd053e65c4f9";
+
+            st.executeUpdate(
+                    "INSERT INTO usuario(username, password_hash, perfil, nome) VALUES " +
+                            "('admin', '" + adminHash + "', 'admin', 'Administrador') " +
+                            "ON CONFLICT(username) DO UPDATE SET " +
+                            "password_hash = excluded.password_hash, perfil = excluded.perfil, nome = excluded.nome;"
+            );
+
+            st.executeUpdate(
+                    "INSERT INTO usuario(username, password_hash, perfil, nome) VALUES " +
+                            "('atendente', '" + atendenteHash + "', 'atendente', 'Atendente Padrão') " +
+                            "ON CONFLICT(username) DO UPDATE SET " +
+                            "password_hash = excluded.password_hash, perfil = excluded.perfil, nome = excluded.nome;"
+            );
+
+            System.out.println("✔ Banco atualizado com sucesso.");
+
         } catch (Exception e) {
             e.printStackTrace();
         }
