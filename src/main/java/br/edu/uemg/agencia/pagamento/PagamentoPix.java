@@ -1,17 +1,13 @@
 package br.edu.uemg.agencia.pagamento;
 
-import java.time.LocalDateTime;
-
-public class PagamentoPix implements Pagamento {
-    private LocalDateTime dataPagamento;
-
+public class PagamentoPix implements Pagavel {
     @Override
-    public boolean processarPagamento(double valor) {
-        this.dataPagamento = LocalDateTime.now();
-        return true;
+    public double calcularValorFinal(double valorBase) {
+        return valorBase * 0.95;
     }
 
-    public LocalDateTime getDataPagamento() {
-        return dataPagamento;
+    @Override
+    public String processar(double valor) {
+        return String.format("Gerando código PIX para R$ %.2f...", valor);
     }
 }

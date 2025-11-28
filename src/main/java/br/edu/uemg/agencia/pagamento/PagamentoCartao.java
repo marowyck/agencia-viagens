@@ -1,22 +1,13 @@
 package br.edu.uemg.agencia.pagamento;
 
-import java.time.LocalDateTime;
-
-public class PagamentoCartao implements Pagamento {
-    private LocalDateTime dataPagamento;
-    private static final double TAXA = 0.025;
+public class PagamentoCartao implements Pagavel {
+    @Override
+    public double calcularValorFinal(double valorBase) {
+        return valorBase * 1.025;
+    }
 
     @Override
-    public boolean processarPagamento(double valor) {
-        this.dataPagamento = LocalDateTime.now();
-        return true;
-    }
-
-    public double calcularValorComTaxa(double valor) {
-        return valor * (1 + TAXA);
-    }
-
-    public LocalDateTime getDataPagamento() {
-        return dataPagamento;
+    public String processar(double valor) {
+        return String.format("Conectando operadora de cartão. Valor: R$ %.2f...", valor);
     }
 }
