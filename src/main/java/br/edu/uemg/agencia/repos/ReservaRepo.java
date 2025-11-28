@@ -25,9 +25,7 @@ public class ReservaRepo {
             ps.executeUpdate();
 
             try (ResultSet rs = ps.getGeneratedKeys()) {
-                if (rs.next()) {
-                    reserva.setId(rs.getInt(1));
-                }
+                if (rs.next()) reserva.setId(rs.getInt(1));
             }
             return reserva;
         } catch (SQLException e) {
@@ -35,15 +33,15 @@ public class ReservaRepo {
         }
     }
 
-    public void updateStatus(int reservaId, String novoStatus) {
-        String sql = "UPDATE reserva SET status = ? WHERE id = ?";
+    public void updateValorTotal(int reservaId, double novoValor) {
+        String sql = "UPDATE reserva SET valor_total = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?";
         try (Connection conn = ConnectionFactory.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, novoStatus);
+            ps.setDouble(1, novoValor);
             ps.setInt(2, reservaId);
             ps.executeUpdate();
         } catch (SQLException e) {
-            throw new RuntimeException("Erro ao atualizar status da reserva: " + e.getMessage(), e);
+            throw new RuntimeException("Erro ao atualizar valor da reserva: " + e.getMessage(), e);
         }
     }
 
@@ -64,9 +62,7 @@ public class ReservaRepo {
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, id);
             try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    return Optional.of(mapRow(rs));
-                }
+                if (rs.next()) return Optional.of(mapRow(rs));
             }
         } catch (SQLException e) {
             throw new RuntimeException("Erro ao buscar reserva por id: " + e.getMessage(), e);
@@ -80,10 +76,7 @@ public class ReservaRepo {
         try (Connection conn = ConnectionFactory.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
-
-            while (rs.next()) {
-                list.add(mapRow(rs));
-            }
+            while (rs.next()) list.add(mapRow(rs));
         } catch (SQLException e) {
             throw new RuntimeException("Erro ao buscar reservas: " + e.getMessage(), e);
         }
@@ -102,15 +95,13 @@ public class ReservaRepo {
         Pacote pacote = null;
         try {
             ClienteRepo cr = new ClienteRepo();
-            Optional<Cliente> oc = cr.findById(clienteId);
-            if (oc.isPresent()) cliente = oc.get();
+            cliente = cr.findById(clienteId).orElse(null);
         } catch (Exception ignored) {
         }
 
         try {
             PacoteRepo pr = new PacoteRepo();
-            Optional<Pacote> op = pr.findById(pacoteId);
-            if (op.isPresent()) pacote = op.get();
+            pacote = pr.findById(pacoteId).orElse(null);
         } catch (Exception ignored) {
         }
 
@@ -125,27 +116,63 @@ public class ReservaRepo {
             r.setDataReserva(LocalDateTime.now());
         }
         r.setValorTotal(valorTotal);
-
         return r;
     }
 
-    public int insertPagamento(int reservaId, String metodo, double taxa, LocalDateTime dataPagamento) {
-        String sql = "INSERT INTO pagamento(reserva_id, metodo, taxa, data_pagamento) VALUES (?, ?, ?, ?)";
-        try (Connection conn = ConnectionFactory.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+    public void insertPagamentoAndConfirm(int reservaId, String metodo, double taxa, LocalDateTime dataPagamento, double novoValorTotal) {
+        String sqlInsert = "INSERT INTO pagamento(reserva_id, metodo, taxa, data_pagamento, created_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)";
+        String sqlUpdateReserva = "UPDATE reserva SET status = 'Confirmada', valor_total = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?";
+        Connection conn = null;
+        try {
+            conn = ConnectionFactory.getConnection();
+            conn.setAutoCommit(false);
 
-            ps.setInt(1, reservaId);
-            ps.setString(2, metodo);
-            ps.setDouble(3, taxa);
-            ps.setString(4, dataPagamento.toString());
-            ps.executeUpdate();
-
-            try (ResultSet rs = ps.getGeneratedKeys()) {
-                if (rs.next()) return rs.getInt(1);
+            try (PreparedStatement ps1 = conn.prepareStatement(sqlInsert)) {
+                ps1.setInt(1, reservaId);
+                ps1.setString(2, metodo);
+                ps1.setDouble(3, taxa);
+                ps1.setString(4, dataPagamento.toString());
+                ps1.executeUpdate();
             }
-            return -1;
+
+            try (PreparedStatement ps2 = conn.prepareStatement(sqlUpdateReserva)) {
+                ps2.setDouble(1, novoValorTotal);
+                ps2.setInt(2, reservaId);
+                ps2.executeUpdate();
+            }
+
+            conn.commit();
+        } catch (Exception e) {
+            try {
+                if (conn != null) conn.rollback();
+            } catch (Exception ignored) {
+            }
+            throw new RuntimeException("Erro ao processar pagamento/confirmar: " + e.getMessage(), e);
+        } finally {
+            try {
+                if (conn != null) conn.setAutoCommit(true);
+                conn.close();
+            } catch (Exception ignored) {
+            }
+        }
+    }
+
+    public void updateStatus(Integer id, String novoStatus) {
+        String sql = "UPDATE reserva SET status = ? WHERE id = ?";
+
+        try (Connection conn = ConnectionFactory.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, novoStatus);
+            stmt.setInt(2, id);
+
+            int linhasAfetadas = stmt.executeUpdate();
+            if (linhasAfetadas == 0) {
+                throw new RuntimeException("Erro: Nenhuma reserva encontrada com o ID " + id);
+            }
+
         } catch (SQLException e) {
-            throw new RuntimeException("Erro ao inserir pagamento: " + e.getMessage(), e);
+            throw new RuntimeException("Erro de Banco ao atualizar status: " + e.getMessage());
         }
     }
 }

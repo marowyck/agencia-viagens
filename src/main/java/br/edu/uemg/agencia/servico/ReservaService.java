@@ -1,87 +1,116 @@
 package br.edu.uemg.agencia.servico;
 
+import br.edu.uemg.agencia.auth.Sessao;
+import br.edu.uemg.agencia.log.LogService;
 import br.edu.uemg.agencia.modelo.Pacote;
-import br.edu.uemg.agencia.modelo.PacoteInternacional;
-import br.edu.uemg.agencia.modelo.PacoteNacional;
 import br.edu.uemg.agencia.modelo.Reserva;
-import br.edu.uemg.agencia.pagamento.Pagamento;
-import br.edu.uemg.agencia.pagamento.PagamentoCartao;
-import br.edu.uemg.agencia.pagamento.PagamentoPix;
 import br.edu.uemg.agencia.repos.ReservaRepo;
+import br.edu.uemg.agencia.repos.PacoteRepo;
+import br.edu.uemg.agencia.pagamento.Pagavel;
+import br.edu.uemg.agencia.pagamento.PagamentoFactory;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 public class ReservaService {
 
     private final ReservaRepo repo = new ReservaRepo();
-    private static final double TAXA_CARTAO = 0.025;
+    private final PacoteRepo pacoteRepo = new PacoteRepo();
 
     public double simularValorFinal(Pacote pacote, boolean pagamentoCartao) {
         if (pacote == null) return 0.0;
-        double base = pacote.calcularValorFinal();
-        if (pagamentoCartao) base = base * (1 + TAXA_CARTAO);
-        return round(base);
+
+        double valorBase = pacote.calcularValorFinal();
+
+        String metodo = pagamentoCartao ? "CARTAO" : "PIX";
+        Pagavel estrategia = PagamentoFactory.criar(metodo);
+
+        return round(estrategia.calcularValorFinal(valorBase));
     }
 
     public Reserva criarReserva(Reserva reserva) {
         if (reserva.getCliente() == null) throw new IllegalArgumentException("Reserva precisa de cliente.");
         if (reserva.getPacote() == null) throw new IllegalArgumentException("Reserva precisa de pacote.");
 
+        Optional<Pacote> op = pacoteRepo.findById(reserva.getPacote().getId());
+        if (op.isEmpty()) throw new IllegalArgumentException("Pacote não encontrado.");
+
         reserva.setDataReserva(LocalDateTime.now());
         reserva.setStatus("Pendente");
-        double valor = reserva.getPacote().calcularValorFinal();
+
+        double valor = op.get().calcularValorFinal();
         reserva.setValorTotal(round(valor));
 
-        return repo.insert(reserva);
+        Reserva criada = repo.insert(reserva);
+
+        LogService.save(
+                Sessao.getUsuarioNome(),
+                "Criou reserva ID " + criada.getId(),
+                "ReservaService",
+                "CREATE",
+                "localhost"
+        );
+        return criada;
     }
 
     public void confirmarPagamento(Reserva reserva, String metodo) {
-        if (reserva == null || reserva.getId() == null) throw new IllegalArgumentException("Reserva inválida.");
-        double taxa = 0.0;
-        double valorParaProcessar = reserva.getValorTotal();
+        if (reserva == null || reserva.getId() == null)
+            throw new IllegalArgumentException("Reserva inválida.");
+        if ("Confirmada".equalsIgnoreCase(reserva.getStatus()))
+            throw new IllegalStateException("Reserva já está confirmada.");
+        if ("Cancelada".equalsIgnoreCase(reserva.getStatus()))
+            throw new IllegalStateException("Reserva está cancelada.");
 
-        if ("cartao".equalsIgnoreCase(metodo)) {
-            PagamentoCartao pc = new PagamentoCartao();
-            boolean ok = pc.processarPagamento(valorParaProcessar);
-            if (!ok) throw new RuntimeException("Pagamento por cartão falhou.");
-            taxa = TAXA_CARTAO * valorParaProcessar;
-            double novoValor = round(valorParaProcessar * (1 + TAXA_CARTAO));
-            reserva.setValorTotal(novoValor);
-        } else {
-            PagamentoPix pp = new PagamentoPix();
-            boolean ok = pp.processarPagamento(valorParaProcessar);
-            if (!ok) throw new RuntimeException("Pagamento PIX falhou.");
-            taxa = 0.0;
-        }
+        Pagavel estrategia = PagamentoFactory.criar(metodo);
 
-        int pagamentoId = repo.insertPagamento(reserva.getId(), metodo.toLowerCase(), taxa, LocalDateTime.now());
-        repo.updateStatus(reserva.getId(), "Confirmada");
-        updateValorTotal(reserva.getId(), reserva.getValorTotal());
-    }
+        double valorOriginal = reserva.getValorTotal();
+        double valorFinal = estrategia.calcularValorFinal(valorOriginal);
+        double taxaOuDesconto = valorFinal - valorOriginal;
 
-    private void updateValorTotal(int reservaId, double novoValor) {
-        String sql = "UPDATE reserva SET valor_total = ? WHERE id = ?";
-        try (var conn = br.edu.uemg.agencia.repos.ConnectionFactory.getConnection();
-             var ps = conn.prepareStatement(sql)) {
-            ps.setDouble(1, novoValor);
-            ps.setInt(2, reservaId);
-            ps.executeUpdate();
-        } catch (Exception e) {
-            throw new RuntimeException("Erro ao atualizar valor da reserva: " + e.getMessage(), e);
-        }
+        String logMensagem = estrategia.processar(valorFinal);
+
+        repo.insertPagamentoAndConfirm(
+                reserva.getId(),
+                metodo.toLowerCase(),
+                taxaOuDesconto,
+                LocalDateTime.now(),
+                valorFinal
+        );
+
+        LogService.save(
+                Sessao.getUsuarioNome(),
+                "Pagamento Confirmado: " + logMensagem,
+                "ReservaService",
+                "UPDATE",
+                "localhost"
+        );
     }
 
     public void cancelarReserva(Reserva reserva) {
-        if (reserva == null || reserva.getId() == null) throw new IllegalArgumentException("Reserva inválida.");
+        if (reserva == null || reserva.getId() == null)
+            throw new IllegalArgumentException("Reserva inválida.");
+
+        if ("Confirmada".equalsIgnoreCase(reserva.getStatus()))
+            throw new IllegalStateException("Não é permitido cancelar reserva já paga (Confirmada).");
+
+        if ("Cancelada".equalsIgnoreCase(reserva.getStatus()))
+            return;
+
         repo.updateStatus(reserva.getId(), "Cancelada");
+
+        reserva.setStatus("Cancelada");
+
+        br.edu.uemg.agencia.log.LogService.save(
+                br.edu.uemg.agencia.auth.Sessao.getUsuarioNome(),
+                "Cancelou reserva ID " + reserva.getId(),
+                "ReservaService",
+                "UPDATE",
+                "localhost"
+        );
     }
 
-    public List<Reserva> listarTodas() {
-        return repo.findAll();
-    }
+    public List<Reserva> listarTodas() { return repo.findAll(); }
 
-    private double round(double v) {
-        return Math.round(v * 100.0) / 100.0;
-    }
+    private double round(double v) { return Math.round(v * 100.0) / 100.0; }
 }

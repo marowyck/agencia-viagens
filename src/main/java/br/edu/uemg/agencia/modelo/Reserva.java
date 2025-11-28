@@ -77,4 +77,5 @@ public class Reserva {
     public void cancelar() {
         this.status = "Cancelada";
     }
+
 }
