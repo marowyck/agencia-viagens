@@ -66,7 +66,7 @@ public class LoginFrame extends JFrame {
 
         JButton btnExit = ModernUI.createButton("Sair", false);
         btnExit.setMaximumSize(new Dimension(400, 50));
-        btnExit.setForeground(ModernUI.COL_ACCENT_DANGER); // Ajuste de cor manual
+        btnExit.setForeground(ModernUI.COL_ACCENT_DANGER);
         btnExit.addActionListener(e -> System.exit(0));
 
         KeyAdapter ka = new KeyAdapter() {

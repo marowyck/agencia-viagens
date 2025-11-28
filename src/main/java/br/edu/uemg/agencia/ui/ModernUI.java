@@ -146,7 +146,7 @@ public class ModernUI {
 
                 g2.fillRoundRect(0, 0, getWidth(), getHeight(), 12, 12);
 
-                if (!isGradient) { // Borda sutil para botões brancos
+                if (!isGradient) {
                     g2.setColor(COL_BORDER);
                     g2.setStroke(new BasicStroke(1));
                     g2.drawRoundRect(0, 0, getWidth()-1, getHeight()-1, 12, 12);
@@ -205,7 +205,7 @@ public class ModernUI {
         table.setShowVerticalLines(false);
         table.setShowHorizontalLines(true);
         table.setGridColor(COL_BORDER);
-        table.setSelectionBackground(new Color(238, 242, 255)); // Indigo claro
+        table.setSelectionBackground(new Color(238, 242, 255));
         table.setSelectionForeground(COL_PRIMARY_1);
         table.setBorder(BorderFactory.createEmptyBorder());
 
@@ -228,7 +228,7 @@ public class ModernUI {
             @Override
             public Component getTableCellRendererComponent(JTable t, Object v, boolean s, boolean f, int r, int c) {
                 Component comp = super.getTableCellRendererComponent(t, v, s, f, r, c);
-                setBorder(new EmptyBorder(0, 15, 0, 0)); // Padding na célula
+                setBorder(new EmptyBorder(0, 15, 0, 0));
                 if (!s) {
                     comp.setBackground(Color.WHITE);
                     comp.setForeground(COL_TEXT_MAIN);

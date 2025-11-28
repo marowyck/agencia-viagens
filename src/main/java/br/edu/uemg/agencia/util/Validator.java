@@ -13,7 +13,7 @@ public final class Validator {
 
     public static boolean isValidCPF(String cpf) {
         if (cpf == null) return false;
-        String digits = cpf.replaceAll("\\D", ""); // keep digits
+        String digits = cpf.replaceAll("\\D", "");
         if (!CPF_ONLY_DIGITS.matcher(digits).matches()) return false;
         int[] nums = new int[11];
         for (int i = 0; i < 11; i++) nums[i] = digits.charAt(i) - '0';

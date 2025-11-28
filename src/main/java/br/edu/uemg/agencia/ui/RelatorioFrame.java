@@ -51,7 +51,6 @@ public class RelatorioFrame extends JFrame {
         content.setOpaque(false);
         content.setBorder(new EmptyBorder(30, 40, 30, 40));
 
-        // Grid com 5 KPIs agora
         JPanel gridKpi = new JPanel(new GridLayout(1, 5, 20, 0));
         gridKpi.setOpaque(false);
         gridKpi.setPreferredSize(new Dimension(0, 140));
