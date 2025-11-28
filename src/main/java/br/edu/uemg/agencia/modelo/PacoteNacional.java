@@ -22,4 +22,9 @@ public class PacoteNacional extends Pacote {
     public double calcularValorFinal() {
         return valorBase * (1 + impostoTurismo);
     }
+
+    @Override
+    public String toString() {
+        return destino;
+    }
 }

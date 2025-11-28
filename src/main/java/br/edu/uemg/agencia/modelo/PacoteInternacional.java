@@ -43,4 +43,9 @@ public class PacoteInternacional extends Pacote {
         double valorConvertido = valorBase * taxaCambio;
         return valorConvertido + taxaEmbarque;
     }
+
+    @Override
+    public String toString() {
+        return destino;
+    }
 }
