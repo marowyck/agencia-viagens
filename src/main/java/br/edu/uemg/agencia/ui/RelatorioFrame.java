@@ -1,12 +1,10 @@
 package br.edu.uemg.agencia.ui;
 
+import br.edu.uemg.agencia.auth.PermissionUtil;
 import br.edu.uemg.agencia.repos.RelatorioRepo;
-import com.formdev.flatlaf.FlatClientProperties;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
-import javax.swing.table.DefaultTableModel;
-import javax.swing.table.JTableHeader;
 import java.awt.*;
 import java.text.NumberFormat;
 import java.util.Locale;
@@ -15,172 +13,137 @@ import java.util.Map;
 public class RelatorioFrame extends JFrame {
 
     private final RelatorioRepo repo = new RelatorioRepo();
-
-    private final Color THEME_COLOR = new Color(245, 158, 11);
-
-    private JLabel valArrecadado;
-    private JLabel valTotalReservas;
-    private JLabel valPendentes;
-    private JLabel valConfirmadas;
-    private JLabel valCanceladas;
-
-    private DefaultTableModel tableModel;
-    private JTable table;
+    private JLabel valArrecadado, valTotalReservas, valPendentes, valConfirmadas, valCanceladas;
+    private JPanel chartContainer;
 
     public RelatorioFrame() {
-        setTitle("Dashboard e Relatórios");
-        setSize(1000, 700);
+        if (!PermissionUtil.requireAdmin(null, "Tentativa de Instanciação Direta", "RelatorioFrame")) {
+            dispose();
+            return;
+        }
+
+        ModernUI.applyTheme(this);
+        setTitle("Analytics | Agência++");
+        setSize(1100, 800);
         setLocationRelativeTo(null);
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-
-        initComponents();
+        initUI();
         carregarDados();
     }
 
-    private void initComponents() {
-        JPanel mainPanel = new JPanel(new BorderLayout());
-        mainPanel.setBackground(Color.WHITE);
+    private void initUI() {
 
-        JPanel headerPanel = new JPanel(new BorderLayout());
-        headerPanel.setBackground(THEME_COLOR);
-        headerPanel.setBorder(new EmptyBorder(20, 25, 20, 25));
+        JPanel main = new JPanel(new BorderLayout());
+        main.setBackground(ModernUI.getBgColor());
 
-        JLabel titleLabel = new JLabel("Relatórios Gerenciais");
-        titleLabel.setForeground(Color.WHITE);
-        titleLabel.putClientProperty(FlatClientProperties.STYLE, "font: bold +10");
+        JPanel header = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        header.setBackground(ModernUI.getSurfaceColor());
+        header.setBorder(BorderFactory.createMatteBorder(0,0,1,0, ModernUI.getBorderColor()));
 
-        JLabel subtitleLabel = new JLabel("Visão geral de desempenho e rankings");
-        subtitleLabel.setForeground(new Color(255, 255, 255, 200));
+        JLabel title = new JLabel("KPIs & Relatórios");
+        title.setFont(ModernUI.FONT_HEADER);
+        title.setForeground(ModernUI.getTextColor());
+        title.setBorder(new EmptyBorder(15, 30, 15, 30));
+        header.add(title);
+        main.add(header, BorderLayout.NORTH);
 
-        JPanel titleContainer = new JPanel(new GridLayout(2, 1));
-        titleContainer.setOpaque(false);
-        titleContainer.add(titleLabel);
-        titleContainer.add(subtitleLabel);
+        JPanel content = new JPanel(new BorderLayout(0, 30));
+        content.setOpaque(false);
+        content.setBorder(new EmptyBorder(30, 40, 30, 40));
 
-        headerPanel.add(titleContainer, BorderLayout.WEST);
-        mainPanel.add(headerPanel, BorderLayout.NORTH);
+        // Grid com 5 KPIs agora
+        JPanel gridKpi = new JPanel(new GridLayout(1, 5, 20, 0));
+        gridKpi.setOpaque(false);
+        gridKpi.setPreferredSize(new Dimension(0, 140));
 
-        JPanel contentPanel = new JPanel(new BorderLayout(0, 25));
-        contentPanel.setBackground(Color.WHITE);
-        contentPanel.setBorder(new EmptyBorder(25, 25, 25, 25));
+        valArrecadado = createBigValue(ModernUI.COL_PRIMARY_1);
+        valTotalReservas = createBigValue(ModernUI.getTextColor());
+        valPendentes = createBigValue(ModernUI.COL_ACCENT_WARNING);
+        valConfirmadas = createBigValue(ModernUI.COL_ACCENT_SUCCESS);
+        valCanceladas = createBigValue(Color.RED);
 
-        JPanel kpiPanel = new JPanel(new GridLayout(1, 5, 15, 0));
-        kpiPanel.setBackground(Color.WHITE);
+        gridKpi.add(createKpiCard("Faturamento Total", valArrecadado));
+        gridKpi.add(createKpiCard("Vendas Realizadas", valTotalReservas));
+        gridKpi.add(createKpiCard("Aguardando Pagto", valPendentes));
+        gridKpi.add(createKpiCard("Confirmadas", valConfirmadas));
+        gridKpi.add(createKpiCard("Canceladas", valCanceladas));
 
-        valArrecadado = createValueLabel(THEME_COLOR); // Cor do tema
-        valTotalReservas = createValueLabel(Color.BLACK);
-        valPendentes = createValueLabel(new Color(234, 179, 8));
-        valConfirmadas = createValueLabel(new Color(16, 185, 129));
-        valCanceladas = createValueLabel(new Color(239, 68, 68));
+        content.add(gridKpi, BorderLayout.NORTH);
 
-        kpiPanel.add(createCard("Faturamento Total", valArrecadado));
-        kpiPanel.add(createCard("Total Reservas", valTotalReservas));
-        kpiPanel.add(createCard("Pendentes", valPendentes));
-        kpiPanel.add(createCard("Confirmadas", valConfirmadas));
-        kpiPanel.add(createCard("Canceladas", valCanceladas));
+        JPanel chartCard = ModernUI.createCard();
+        chartCard.setLayout(new BorderLayout());
 
-        contentPanel.add(kpiPanel, BorderLayout.NORTH);
+        JLabel lblChart = new JLabel("Destinos Mais Populares");
+        lblChart.setFont(ModernUI.FONT_BOLD);
+        lblChart.setForeground(ModernUI.getTextGrayColor());
+        lblChart.setBorder(new EmptyBorder(0,0,20,0));
 
-        JPanel tablePanel = new JPanel(new BorderLayout(0, 10));
-        tablePanel.setBackground(Color.WHITE);
+        chartContainer = new JPanel(new BorderLayout());
+        chartContainer.setBackground(ModernUI.getSurfaceColor());
+        chartContainer.add(new JLabel("Carregando dados...", SwingConstants.CENTER));
 
-        JLabel lblTableTitle = new JLabel("Destinos Mais Vendidos");
-        lblTableTitle.putClientProperty(FlatClientProperties.STYLE, "font: bold +4");
-        tablePanel.add(lblTableTitle, BorderLayout.NORTH);
+        chartCard.add(lblChart, BorderLayout.NORTH);
+        chartCard.add(chartContainer, BorderLayout.CENTER);
+        content.add(chartCard, BorderLayout.CENTER);
 
-        tableModel = new DefaultTableModel(new Object[]{"Destino", "Quantidade Vendida"}, 0) {
-            @Override
-            public boolean isCellEditable(int row, int column) {
-                return false;
-            }
-        };
-        table = new JTable(tableModel);
-        styleTable(table);
+        JPanel footer = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        footer.setOpaque(false);
+        JButton btnUpdate = ModernUI.createFlatButton("↻ Atualizar Dados", ModernUI.COL_PRIMARY_1);
+        btnUpdate.addActionListener(e -> carregarDados());
+        footer.add(btnUpdate);
+        content.add(footer, BorderLayout.SOUTH);
 
-        JScrollPane scroll = new JScrollPane(table);
-        scroll.setBorder(BorderFactory.createLineBorder(new Color(230, 230, 230)));
-
-        tablePanel.add(scroll, BorderLayout.CENTER);
-        contentPanel.add(tablePanel, BorderLayout.CENTER);
-
-        JPanel footerPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        footerPanel.setBackground(Color.WHITE);
-        JButton btnRefresh = new JButton("Atualizar Dados");
-        btnRefresh.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 5,15,5,15");
-        btnRefresh.addActionListener(e -> carregarDados());
-        footerPanel.add(btnRefresh);
-
-        contentPanel.add(footerPanel, BorderLayout.SOUTH);
-
-        mainPanel.add(contentPanel, BorderLayout.CENTER);
-        setContentPane(mainPanel);
+        main.add(content, BorderLayout.CENTER);
+        setContentPane(main);
     }
 
-    private JPanel createCard(String title, JLabel valueLabel) {
-        JPanel card = new JPanel(new BorderLayout(10, 5));
-        card.setBackground(Color.WHITE);
-        card.setBorder(BorderFactory.createCompoundBorder(
-                new com.formdev.flatlaf.ui.FlatLineBorder(new Insets(1, 1, 1, 1), new Color(220, 220, 220), 1, 15),
-                new EmptyBorder(15, 15, 15, 15)
-        ));
+    private JPanel createKpiCard(String title, JLabel valueLabel) {
+        JPanel p = ModernUI.createCard();
+        p.setLayout(new BorderLayout());
 
-        JLabel lblTitle = new JLabel(title.toUpperCase());
-        lblTitle.setForeground(Color.GRAY);
-        lblTitle.putClientProperty(FlatClientProperties.STYLE, "font: bold small");
+        JLabel l = new JLabel(title.toUpperCase());
+        l.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        l.setForeground(ModernUI.getTextGrayColor());
 
-        card.add(lblTitle, BorderLayout.NORTH);
-        card.add(valueLabel, BorderLayout.CENTER);
-
-        return card;
+        p.add(l, BorderLayout.NORTH);
+        p.add(valueLabel, BorderLayout.CENTER);
+        return p;
     }
 
-    private JLabel createValueLabel(Color color) {
+    private JLabel createBigValue(Color color) {
         JLabel l = new JLabel("...");
+        l.setFont(new Font("Segoe UI", Font.BOLD, 28));
         l.setForeground(color);
-        l.putClientProperty(FlatClientProperties.STYLE, "font: bold +14");
+        l.setVerticalAlignment(SwingConstants.CENTER);
         return l;
     }
 
-    private void styleTable(JTable table) {
-        table.setRowHeight(40); // Linhas mais altas
-        table.setShowVerticalLines(false);
-        table.setGridColor(new Color(230, 230, 230));
-        table.setSelectionBackground(new Color(245, 158, 11, 40)); // Laranja claro
-        table.setSelectionForeground(Color.BLACK);
-
-        JTableHeader header = table.getTableHeader();
-        header.setDefaultRenderer((table1, value, isSelected, hasFocus, row, column) -> {
-            JLabel label = new JLabel(value.toString());
-            label.setBackground(Color.WHITE);
-            label.setForeground(new Color(100, 100, 100));
-            label.setFont(new Font("Segoe UI", Font.BOLD, 12));
-            label.setBorder(BorderFactory.createMatteBorder(0, 0, 2, 0, THEME_COLOR));
-            label.setHorizontalAlignment(JLabel.LEFT);
-            label.setBorder(BorderFactory.createCompoundBorder(
-                    label.getBorder(), BorderFactory.createEmptyBorder(0, 10, 0, 0)));
-            return label;
-        });
-    }
-
-
     private void carregarDados() {
-        NumberFormat nf = NumberFormat.getCurrencyInstance(new Locale("pt", "BR"));
+        try {
+            NumberFormat nf = NumberFormat.getCurrencyInstance(new Locale("pt", "BR"));
 
-        double total = repo.getTotalArrecadado();
-        valArrecadado.setText(nf.format(total));
+            valArrecadado.setText(nf.format(repo.getTotalArrecadado()));
+            valTotalReservas.setText(String.valueOf(repo.getTotalReservas()));
 
-        int totalR = repo.getTotalReservas();
-        valTotalReservas.setText(String.valueOf(totalR));
+            Map<String, Integer> status = repo.getTotalPorStatus();
+            valPendentes.setText(String.valueOf(status.getOrDefault("Pendente", 0)));
+            valConfirmadas.setText(String.valueOf(status.getOrDefault("Confirmada", 0)));
+            valCanceladas.setText(String.valueOf(status.getOrDefault("Cancelada", 0)));
 
-        Map<String, Integer> status = repo.getTotalPorStatus();
+            Map<String, Map<String, Integer>> ranking = repo.getRankingDestinosPorStatus();
 
-        valPendentes.setText(String.valueOf(status.getOrDefault("Pendente", 0)));
-        valConfirmadas.setText(String.valueOf(status.getOrDefault("Confirmada", 0)));
-        valCanceladas.setText(String.valueOf(status.getOrDefault("Cancelada", 0)));
+            chartContainer.removeAll();
+            if (ranking.isEmpty()) {
+                chartContainer.add(new JLabel("Sem dados para exibir", SwingConstants.CENTER));
+            } else {
+                chartContainer.add(new PainelGraficoPorStatus(ranking), BorderLayout.CENTER);
+            }
 
-        tableModel.setRowCount(0);
-        repo.getRankingDestinos().forEach((nome, qtd) ->
-                tableModel.addRow(new Object[]{nome, qtd + " vendas"})
-        );
+            chartContainer.revalidate();
+            chartContainer.repaint();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }

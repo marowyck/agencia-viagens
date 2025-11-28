@@ -58,26 +58,30 @@ public class RelatorioRepo {
         return map;
     }
 
-    public Map<String, Integer> getRankingDestinos() {
+    public Map<String, Map<String, Integer>> getRankingDestinosPorStatus() {
         String sql = """
-                    SELECT p.destino, COUNT(r.id) AS qtd
+                    SELECT p.destino, r.status, COUNT(r.id) AS qtd
                     FROM reserva r
                     JOIN pacote p ON p.id = r.pacote_id
-                    GROUP BY r.pacote_id
-                    ORDER BY qtd DESC
+                    GROUP BY p.destino, r.status
+                    ORDER BY p.destino, r.status
                 """;
 
-        Map<String, Integer> map = new LinkedHashMap<>();
+        Map<String, Map<String, Integer>> map = new LinkedHashMap<>();
 
         try (Connection conn = ConnectionFactory.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
 
             while (rs.next()) {
-                map.put(rs.getString("destino"), rs.getInt("qtd"));
+                String destino = rs.getString("destino");
+                String status = rs.getString("status");
+                int qtd = rs.getInt("qtd");
+
+                map.computeIfAbsent(destino, k -> new LinkedHashMap<>()).put(status, qtd);
             }
         } catch (Exception e) {
-            throw new RuntimeException("Erro no ranking destinos: " + e.getMessage());
+            throw new RuntimeException("Erro no ranking destinos por status: " + e.getMessage());
         }
         return map;
     }
