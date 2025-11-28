@@ -1,6 +1,7 @@
 package br.edu.uemg.agencia.repos;
 
 import br.edu.uemg.agencia.modelo.Cliente;
+import br.edu.uemg.agencia.util.Validator;
 
 import java.sql.*;
 import java.util.ArrayList;
@@ -9,38 +10,37 @@ import java.util.Optional;
 
 public class ClienteRepo {
 
-    public Cliente insert(Cliente cliente) {
+    public Cliente insert(Cliente c) {
+        if (c == null) throw new IllegalArgumentException("Cliente nulo");
+        if (!Validator.isValidCPF(c.getCpf())) throw new IllegalArgumentException("CPF inválido");
         String sql = "INSERT INTO cliente(nome, cpf, email, telefone) VALUES (?, ?, ?, ?)";
         try (Connection conn = ConnectionFactory.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-
-            ps.setString(1, cliente.getNome());
-            ps.setString(2, cliente.getCpf());
-            ps.setString(3, cliente.getEmail());
-            ps.setString(4, cliente.getTelefone());
+            ps.setString(1, c.getNome());
+            ps.setString(2, c.getCpf());
+            ps.setString(3, c.getEmail());
+            ps.setString(4, c.getTelefone());
             ps.executeUpdate();
-
             try (ResultSet rs = ps.getGeneratedKeys()) {
-                if (rs.next()) {
-                    cliente.setId(rs.getInt(1));
-                }
+                if (rs.next()) c.setId(rs.getInt(1));
             }
-            return cliente;
+            return c;
         } catch (SQLException e) {
             throw new RuntimeException("Erro ao inserir cliente: " + e.getMessage(), e);
         }
     }
 
-    public void update(Cliente cliente) {
-        String sql = "UPDATE cliente SET nome = ?, cpf = ?, email = ?, telefone = ? WHERE id = ?";
+    public void update(Cliente c) {
+        if (c == null || c.getId() == null) throw new IllegalArgumentException("Cliente inválido");
+        if (!Validator.isValidCPF(c.getCpf())) throw new IllegalArgumentException("CPF inválido");
+        String sql = "UPDATE cliente SET nome = ?, cpf = ?, email = ?, telefone = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?";
         try (Connection conn = ConnectionFactory.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
-
-            ps.setString(1, cliente.getNome());
-            ps.setString(2, cliente.getCpf());
-            ps.setString(3, cliente.getEmail());
-            ps.setString(4, cliente.getTelefone());
-            ps.setInt(5, cliente.getId());
+            ps.setString(1, c.getNome());
+            ps.setString(2, c.getCpf());
+            ps.setString(3, c.getEmail());
+            ps.setString(4, c.getTelefone());
+            ps.setInt(5, c.getId());
             ps.executeUpdate();
         } catch (SQLException e) {
             throw new RuntimeException("Erro ao atualizar cliente: " + e.getMessage(), e);
@@ -54,66 +54,52 @@ public class ClienteRepo {
             ps.setInt(1, id);
             ps.executeUpdate();
         } catch (SQLException e) {
-            throw new RuntimeException("Erro ao deletar cliente: " + e.getMessage(), e);
+            throw new RuntimeException("Erro ao remover cliente: " + e.getMessage(), e);
         }
     }
 
     public Optional<Cliente> findById(int id) {
-        String sql = "SELECT id, nome, cpf, email, telefone FROM cliente WHERE id = ?";
+        String sql = "SELECT * FROM cliente WHERE id = ?";
         try (Connection conn = ConnectionFactory.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, id);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
-                    Cliente c = mapRow(rs);
+                    Cliente c = new Cliente(
+                            rs.getInt("id"),
+                            rs.getString("nome"),
+                            rs.getString("cpf"),
+                            rs.getString("email"),
+                            rs.getString("telefone")
+                    );
                     return Optional.of(c);
                 }
             }
         } catch (SQLException e) {
-            throw new RuntimeException("Erro ao buscar cliente por id: " + e.getMessage(), e);
+            throw new RuntimeException("Erro ao buscar cliente: " + e.getMessage(), e);
         }
         return Optional.empty();
     }
 
     public List<Cliente> findAll() {
-        String sql = "SELECT id, nome, cpf, email, telefone FROM cliente ORDER BY nome";
+        String sql = "SELECT * FROM cliente ORDER BY nome";
         List<Cliente> list = new ArrayList<>();
         try (Connection conn = ConnectionFactory.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
-
             while (rs.next()) {
-                list.add(mapRow(rs));
+                Cliente c = new Cliente(
+                        rs.getInt("id"),
+                        rs.getString("nome"),
+                        rs.getString("cpf"),
+                        rs.getString("email"),
+                        rs.getString("telefone")
+                );
+                list.add(c);
             }
+            return list;
         } catch (SQLException e) {
-            throw new RuntimeException("Erro ao buscar clientes: " + e.getMessage(), e);
+            throw new RuntimeException("Erro ao listar clientes: " + e.getMessage(), e);
         }
-        return list;
-    }
-
-    public Optional<Cliente> findByCpf(String cpf) {
-        String sql = "SELECT id, nome, cpf, email, telefone FROM cliente WHERE cpf = ?";
-        try (Connection conn = ConnectionFactory.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, cpf);
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    return Optional.of(mapRow(rs));
-                }
-            }
-        } catch (SQLException e) {
-            throw new RuntimeException("Erro ao buscar cliente por CPF: " + e.getMessage(), e);
-        }
-        return Optional.empty();
-    }
-
-    private Cliente mapRow(ResultSet rs) throws SQLException {
-        Cliente c = new Cliente();
-        c.setId(rs.getInt("id"));
-        c.setNome(rs.getString("nome"));
-        c.setCpf(rs.getString("cpf"));
-        c.setEmail(rs.getString("email"));
-        c.setTelefone(rs.getString("telefone"));
-        return c;
     }
 }
