@@ -7,150 +7,190 @@ import br.edu.uemg.agencia.modelo.Usuario;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
 
 public class MainFrame extends JFrame {
 
     private final Usuario usuario;
+    private JTextField txtSearch;
 
     public MainFrame(Usuario usuario) {
         this.usuario = usuario;
         Sessao.setUsuario(usuario);
-        ModernUI.applyTheme(this);
-        setTitle("Dashboard | Agência++");
-        setSize(1280, 800);
+
+        setTitle("Agência Viagens++ | Pro");
+        setSize(1400, 850);
         setLocationRelativeTo(null);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+
         initUI();
     }
 
     private void initUI() {
-        JPanel mainLayout = new JPanel(new BorderLayout());
+        ModernUI.setupTheme(this);
 
-        JPanel sidebar = ModernUI.createGradientPanel();
-        sidebar.setPreferredSize(new Dimension(280, 0));
+        JPanel layout = new JPanel(new BorderLayout());
+        layout.setBackground(ModernUI.COL_BG);
+
+        JPanel sidebar = new JPanel();
         sidebar.setLayout(new BoxLayout(sidebar, BoxLayout.Y_AXIS));
-        sidebar.setBorder(new EmptyBorder(40, 30, 40, 30));
+        sidebar.setBackground(ModernUI.COL_SIDEBAR);
+        sidebar.setPreferredSize(new Dimension(260, 0));
+        sidebar.setBorder(new EmptyBorder(40, 25, 40, 25));
 
-        JLabel lblLogo = new JLabel("AGÊNCIA++");
-        lblLogo.setFont(new Font("Segoe UI", Font.BOLD, 28));
-        lblLogo.setForeground(Color.WHITE);
-        lblLogo.setAlignmentX(Component.LEFT_ALIGNMENT);
+        JLabel logo = new JLabel("AGÊNCIA++");
+        logo.setFont(ModernUI.FONT_BIG);
+        logo.setForeground(ModernUI.BRAND);
+        logo.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        JLabel lblRole = new JLabel("Painel " + usuario.getPerfil());
-        lblRole.setForeground(new Color(255, 255, 255, 150));
-        lblRole.setAlignmentX(Component.LEFT_ALIGNMENT);
+        sidebar.add(logo);
+        sidebar.add(Box.createVerticalStrut(50));
 
-        sidebar.add(lblLogo);
-        sidebar.add(lblRole);
-        sidebar.add(Box.createVerticalStrut(60));
+        JLabel menuLabel = new JLabel("MENU PRINCIPAL");
+        menuLabel.setFont(new Font("SansSerif", Font.BOLD, 10));
+        menuLabel.setForeground(ModernUI.COL_TEXT_BODY);
+        menuLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        sidebar.add(menuLabel);
+        sidebar.add(Box.createVerticalStrut(20));
 
-        sidebar.add(createMenuBtn("👥  Clientes", e -> new ClienteForm().setVisible(true)));
-        sidebar.add(Box.createVerticalStrut(15));
-        sidebar.add(createMenuBtn("🌍  Pacotes", e -> new PacoteForm().setVisible(true)));
-        sidebar.add(Box.createVerticalStrut(15));
-        sidebar.add(createMenuBtn("📅  Reservas", e -> new ReservaForm().setVisible(true)));
-        sidebar.add(Box.createVerticalStrut(15));
-
-        sidebar.add(createMenuBtn("📊  Relatórios", e -> {
-            if (PermissionUtil.requireAdmin(this, "Acessar Relatórios", "MainFrame")) {
-                new RelatorioFrame().setVisible(true);
-            }
+        sidebar.add(createSidebarItem("Clientes", "👤", e -> new ClienteForm().setVisible(true)));
+        sidebar.add(Box.createVerticalStrut(10));
+        sidebar.add(createSidebarItem("Pacotes", "🌎", e -> new PacoteForm().setVisible(true)));
+        sidebar.add(Box.createVerticalStrut(10));
+        sidebar.add(createSidebarItem("Reservas", "📅", e -> new ReservaForm().setVisible(true)));
+        sidebar.add(Box.createVerticalStrut(10));
+        sidebar.add(createSidebarItem("Analytics", "📊", e -> {
+            if(PermissionUtil.requireAdmin(this, "Relatórios", "Dash")) new RelatorioFrame().setVisible(true);
         }));
 
         sidebar.add(Box.createVerticalGlue());
 
-        JButton btnLogout = new JButton("Sair do Sistema");
-        btnLogout.setForeground(Color.WHITE);
-        btnLogout.setBackground(new Color(255, 255, 255, 30));
-        btnLogout.setBorderPainted(false);
-        btnLogout.setContentAreaFilled(false);
-        btnLogout.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        btnLogout.setAlignmentX(Component.LEFT_ALIGNMENT);
-        btnLogout.addActionListener(e -> dispose());
-        sidebar.add(btnLogout);
+        JButton btnTheme = new JButton("Alternar Tema 🌗");
+        btnTheme.setForeground(ModernUI.COL_TEXT_BODY);
+        btnTheme.setBorderPainted(false);
+        btnTheme.setContentAreaFilled(false);
+        btnTheme.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnTheme.setAlignmentX(Component.LEFT_ALIGNMENT);
+        btnTheme.addActionListener(e -> {
+            ModernUI.toggleTheme(this);
+            dispose();
+            new MainFrame(usuario).setVisible(true);
+        });
+        sidebar.add(btnTheme);
 
-        JPanel content = new JPanel(new BorderLayout());
+        JButton btnExit = createSidebarItem("Sair", "🚪", e -> dispose());
+        btnExit.setForeground(ModernUI.DANGER);
+        sidebar.add(Box.createVerticalStrut(10));
+        sidebar.add(btnExit);
+
+        JPanel content = new JPanel(new BorderLayout(0, 30));
         content.setBackground(ModernUI.COL_BG);
-        content.setBorder(new EmptyBorder(50, 50, 50, 50));
+        content.setBorder(new EmptyBorder(40, 50, 40, 50));
 
-        JPanel headerInfo = new JPanel(new GridLayout(2, 1));
-        headerInfo.setOpaque(false);
-        JLabel lblHello = new JLabel("Olá, " + usuario.getNome() + " 👋");
-        lblHello.setFont(ModernUI.FONT_HERO);
-        lblHello.setForeground(ModernUI.COL_TEXT_MAIN);
+        JPanel header = new JPanel(new BorderLayout());
+        header.setOpaque(false);
 
-        JLabel lblSub = new JLabel("Aqui está o resumo da operação.");
-        lblSub.setFont(ModernUI.FONT_BODY);
-        lblSub.setForeground(ModernUI.COL_TEXT_LIGHT);
-        headerInfo.add(lblHello);
-        headerInfo.add(lblSub);
+        JPanel texts = new JPanel(new GridLayout(2,1));
+        texts.setOpaque(false);
+        JLabel title = new JLabel("Olá, " + usuario.getNome() + " 👋");
+        title.setFont(ModernUI.FONT_BIG);
+        title.setForeground(ModernUI.COL_TEXT_H1);
+        JLabel sub = new JLabel("Aqui está o resumo da sua agência hoje.");
+        sub.setFont(ModernUI.FONT_PLAIN);
+        sub.setForeground(ModernUI.COL_TEXT_BODY);
+        texts.add(title); texts.add(sub);
 
-        JPanel cardsGrid = new JPanel(new GridLayout(1, 3, 30, 0));
-        cardsGrid.setOpaque(false);
-        cardsGrid.setPreferredSize(new Dimension(0, 200));
+        JPanel searchPanel = new JPanel(new BorderLayout());
+        searchPanel.setOpaque(false);
+        txtSearch = ModernUI.createInput("Comando rápido (Ex: novo cliente)...");
+        txtSearch.setPreferredSize(new Dimension(300, 35));
+        txtSearch.addKeyListener(new KeyAdapter() {
+            public void keyPressed(KeyEvent e) { if(e.getKeyCode() == KeyEvent.VK_ENTER) executeCommand(); }
+        });
+        searchPanel.add(txtSearch, BorderLayout.EAST);
 
-        cardsGrid.add(createActionCard("Nova Reserva", "Iniciar Venda", "🛒", ModernUI.COL_PRIMARY_1, e -> new ReservaForm().setVisible(true)));
-        cardsGrid.add(createActionCard("Novo Cliente", "Cadastrar", "👤", ModernUI.COL_ACCENT_SUCCESS, e -> new ClienteForm().setVisible(true)));
+        header.add(texts, BorderLayout.WEST);
+        header.add(searchPanel, BorderLayout.EAST);
 
-        cardsGrid.add(createActionCard("Relatórios", "Ver Dados", "📈", ModernUI.COL_ACCENT_DANGER, e -> {
-            if (PermissionUtil.requireAdmin(this, "Acessar Relatórios (Atalho)", "MainFrame")) {
-                new RelatorioFrame().setVisible(true);
-            }
+        JPanel cards = new JPanel(new GridLayout(1, 3, 25, 0));
+        cards.setOpaque(false);
+        cards.setPreferredSize(new Dimension(0, 200));
+
+        cards.add(createStatCard("Vendas", "Nova Reserva", "🛒", ModernUI.BRAND, e -> new ReservaForm().setVisible(true)));
+        cards.add(createStatCard("CRM", "Novo Cliente", "✨", ModernUI.SUCCESS, e -> new ClienteForm().setVisible(true)));
+        cards.add(createStatCard("Admin", "Relatórios", "📈", ModernUI.ACCENT, e -> {
+            if(PermissionUtil.requireAdmin(this, "Rel", "Dash")) new RelatorioFrame().setVisible(true);
         }));
 
-        JPanel topSection = new JPanel(new BorderLayout());
-        topSection.setOpaque(false);
-        topSection.add(headerInfo, BorderLayout.NORTH);
-        topSection.add(Box.createVerticalStrut(40), BorderLayout.CENTER);
+        content.add(header, BorderLayout.NORTH);
+        content.add(cards, BorderLayout.CENTER);
 
-        content.add(topSection, BorderLayout.NORTH);
-        content.add(cardsGrid, BorderLayout.CENTER);
+        layout.add(sidebar, BorderLayout.WEST);
+        layout.add(content, BorderLayout.CENTER);
 
-        mainLayout.add(sidebar, BorderLayout.WEST);
-        mainLayout.add(content, BorderLayout.CENTER);
-
-        setContentPane(mainLayout);
+        setContentPane(layout);
     }
 
-    private JButton createMenuBtn(String text, java.awt.event.ActionListener action) {
-        JButton btn = new JButton(text);
-        btn.setFont(new Font("Segoe UI", Font.BOLD, 16));
-        btn.setForeground(new Color(255, 255, 255, 200));
-        btn.setBackground(new Color(0, 0, 0, 0));
+    private JButton createSidebarItem(String text, String icon, java.awt.event.ActionListener act) {
+        JButton btn = new JButton(icon + "   " + text);
+        btn.setFont(ModernUI.FONT_BOLD);
+        btn.setForeground(ModernUI.COL_TEXT_H1);
+        btn.setBackground(new Color(0,0,0,0));
         btn.setBorderPainted(false);
-        btn.setContentAreaFilled(false);
         btn.setFocusPainted(false);
-        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btn.setContentAreaFilled(false);
         btn.setHorizontalAlignment(SwingConstants.LEFT);
-        btn.setAlignmentX(Component.LEFT_ALIGNMENT);
-        btn.setMaximumSize(new Dimension(300, 45));
-        btn.addActionListener(action);
+        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btn.setMaximumSize(new Dimension(220, 45));
+        btn.addActionListener(act);
+        btn.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseEntered(java.awt.event.MouseEvent e) { btn.setForeground(ModernUI.BRAND); }
+            public void mouseExited(java.awt.event.MouseEvent e) { btn.setForeground(ModernUI.COL_TEXT_H1); }
+        });
         return btn;
     }
 
-    private JPanel createActionCard(String title, String btnText, String icon, Color accent, java.awt.event.ActionListener action) {
+    private JPanel createStatCard(String sup, String main, String icon, Color cor, java.awt.event.ActionListener act) {
         JPanel card = ModernUI.createCard();
         card.setLayout(new BorderLayout());
 
-        JPanel inner = new JPanel(new GridLayout(3, 1));
-        inner.setOpaque(false);
+        JLabel lSup = new JLabel(sup.toUpperCase());
+        lSup.setFont(new Font("SansSerif", Font.BOLD, 11));
+        lSup.setForeground(ModernUI.COL_TEXT_BODY);
 
-        JLabel lblIcon = new JLabel(icon);
-        lblIcon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 40));
+        JLabel lMain = new JLabel(main);
+        lMain.setFont(ModernUI.FONT_H1);
+        lMain.setForeground(ModernUI.COL_TEXT_H1);
 
-        JLabel lblTitle = new JLabel(title);
-        lblTitle.setFont(ModernUI.FONT_H2);
-        lblTitle.setForeground(ModernUI.COL_TEXT_MAIN);
+        JLabel lIcon = new JLabel(icon);
+        lIcon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 40));
 
-        JButton btn = ModernUI.createButton(btnText, false);
-        btn.setForeground(accent);
-        btn.addActionListener(action);
+        JButton btn = ModernUI.createOutlineButton("Acessar");
+        btn.addActionListener(act);
 
-        inner.add(lblIcon);
-        inner.add(lblTitle);
-        inner.add(btn);
+        JPanel top = new JPanel(new GridLayout(2,1)); top.setOpaque(false);
+        top.add(lSup); top.add(lMain);
 
-        card.add(inner, BorderLayout.CENTER);
+        card.add(top, BorderLayout.NORTH);
+        card.add(lIcon, BorderLayout.CENTER);
+        card.add(btn, BorderLayout.SOUTH);
         return card;
+    }
+
+    private void executeCommand() {
+        String cmd = txtSearch.getText().toLowerCase();
+        if(cmd.contains("sair")) dispose();
+        else if(cmd.contains("reserva")) new ReservaForm().setVisible(true);
+        else if(cmd.contains("cliente")) new ClienteForm().setVisible(true);
+        else if(cmd.contains("pacote")) new PacoteForm().setVisible(true);
+        else {
+            var list = new br.edu.uemg.agencia.repos.ClienteRepo().searchByName(cmd);
+            if(!list.isEmpty()) {
+                ClienteForm f = new ClienteForm(); f.setVisible(true);
+                JOptionPane.showMessageDialog(f, "Encontrei " + list.size() + " clientes!");
+            } else JOptionPane.showMessageDialog(this, "Nada encontrado.");
+        }
+        txtSearch.setText("");
     }
 }
