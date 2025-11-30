@@ -2,257 +2,170 @@ package br.edu.uemg.agencia.ui;
 
 import br.edu.uemg.agencia.auth.PermissionUtil;
 import br.edu.uemg.agencia.auth.Sessao;
-import br.edu.uemg.agencia.modelo.Pacote;
-import br.edu.uemg.agencia.modelo.PacoteInternacional;
-import br.edu.uemg.agencia.modelo.PacoteNacional;
+import br.edu.uemg.agencia.modelo.*;
 import br.edu.uemg.agencia.repos.PacoteRepo;
-
+import br.edu.uemg.agencia.util.ExternalService;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 
 public class PacoteForm extends JFrame {
-
     private final PacoteRepo repo = new PacoteRepo();
-    private JTextField tfId, tfDestino, tfDuracao, tfValorBase;
-    private JTextField tfMoeda, tfTaxaCambio, tfTaxaEmbarque;
+    private JTextField tfId, tfDestino, tfDuracao, tfValor, tfMoeda, tfCambio, tfEmb;
     private JComboBox<String> cbTipo;
     private DefaultTableModel tableModel;
     private JTable table;
-
     private JButton btnExcluir;
-    private JButton btnSave;
 
     public PacoteForm() {
-        ModernUI.applyTheme(this);
-        setTitle("Gestão de Pacotes");
-        setSize(1100, 800);
+        ModernUI.setupTheme(this);
+        setTitle("Pacotes");
+        setSize(1000, 700);
         setLocationRelativeTo(null);
-        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         initUI();
-        loadTableData();
-        toggleTipoFields();
-        applyPermissions();
+        loadData();
     }
 
     private void initUI() {
-        JPanel main = new JPanel(new BorderLayout());
+        JPanel main = new JPanel(new BorderLayout(20,20));
         main.setBackground(ModernUI.COL_BG);
+        main.setBorder(new EmptyBorder(20,20,20,20));
 
-        JPanel header = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        header.setBackground(ModernUI.COL_SURFACE);
-        header.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(229, 231, 235)));
-        JLabel title = new JLabel("Pacotes de Viagem");
-        title.setFont(ModernUI.FONT_H1);
-        title.setBorder(new EmptyBorder(20, 30, 20, 30));
-        header.add(title);
-        main.add(header, BorderLayout.NORTH);
+        JPanel form = ModernUI.createCard();
+        form.setLayout(new BorderLayout(0,15));
 
-        JPanel content = new JPanel(new BorderLayout(0, 25));
-        content.setOpaque(false);
-        content.setBorder(new EmptyBorder(30, 40, 30, 40));
+        JPanel grid = new JPanel(new GridLayout(2, 4, 15, 15));
+        grid.setOpaque(false);
 
-        JPanel formCard = ModernUI.createCard();
-        formCard.setLayout(new BorderLayout(0, 20));
-
-        JPanel fields = new JPanel(new GridLayout(2, 4, 20, 20));
-        fields.setOpaque(false);
-
-        tfId = ModernUI.createInput("Auto");
-        tfId.setEditable(false);
-        tfId.setBackground(new Color(245, 245, 245));
-
+        tfId = ModernUI.createInput("Auto"); tfId.setEditable(false);
         cbTipo = new JComboBox<>(new String[]{"Nacional", "Internacional"});
-        styleCombo(cbTipo);
-
-        tfDestino = ModernUI.createInput("Ex: Paris");
+        tfDestino = ModernUI.createInput("Destino");
         tfDuracao = ModernUI.createInput("Dias");
-        tfValorBase = ModernUI.createInput("R$ 0.00");
+        tfValor = ModernUI.createInput("Valor");
         tfMoeda = ModernUI.createInput("Moeda");
-        tfTaxaCambio = ModernUI.createInput("Câmbio");
-        tfTaxaEmbarque = ModernUI.createInput("Tx Emb");
 
-        fields.add(ModernUI.createFieldGroup("ID", tfId));
-        fields.add(ModernUI.createFieldGroup("Tipo", cbTipo));
-        fields.add(ModernUI.createFieldGroup("Destino", tfDestino));
-        fields.add(ModernUI.createFieldGroup("Duração", tfDuracao));
-        fields.add(ModernUI.createFieldGroup("Valor Base", tfValorBase));
-        fields.add(ModernUI.createFieldGroup("Moeda", tfMoeda));
-        fields.add(ModernUI.createFieldGroup("Câmbio", tfTaxaCambio));
-        fields.add(ModernUI.createFieldGroup("Tx Embarque", tfTaxaEmbarque));
+        JPanel pCambio = new JPanel(new BorderLayout(5,0)); pCambio.setOpaque(false);
+        tfCambio = ModernUI.createInput("Câmbio");
+        pCambio.add(tfCambio, BorderLayout.CENTER);
+        JButton btnUp = ModernUI.createOutlineButton("↻"); btnUp.setPreferredSize(new Dimension(40,30));
+        btnUp.addActionListener(e -> fetch());
+        pCambio.add(btnUp, BorderLayout.EAST);
 
-        JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        actions.setOpaque(false);
+        tfEmb = ModernUI.createInput("Taxa Emb.");
 
-        btnSave = ModernUI.createButton("Salvar", true);
-        JButton btnNew = ModernUI.createButton("Novo / Limpar", false);
-        btnExcluir = ModernUI.createButton("Excluir", false);
-        btnExcluir.setForeground(ModernUI.COL_ACCENT_DANGER);
+        grid.add(ModernUI.createLabelGroup("ID", tfId));
+        grid.add(ModernUI.createLabelGroup("Tipo", cbTipo));
+        grid.add(ModernUI.createLabelGroup("Destino", tfDestino));
+        grid.add(ModernUI.createLabelGroup("Duração", tfDuracao));
+        grid.add(ModernUI.createLabelGroup("Valor Base", tfValor));
+        grid.add(ModernUI.createLabelGroup("Moeda", tfMoeda));
+        grid.add(ModernUI.createLabelGroup("Câmbio", pCambio));
+        grid.add(ModernUI.createLabelGroup("Embarque", tfEmb));
 
-        cbTipo.addActionListener(e -> toggleTipoFields());
-        btnSave.addActionListener(e -> onSalvar());
-        btnNew.addActionListener(e -> clearForm());
-        btnExcluir.addActionListener(e -> onExcluir());
+        JPanel btns = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        btns.setOpaque(false);
+        JButton btnMap = ModernUI.createOutlineButton("Mapa");
+        JButton btnSave = ModernUI.createButton("Salvar");
+        btnExcluir = ModernUI.createButton("Excluir"); btnExcluir.setBackground(ModernUI.DANGER);
+        JButton btnClr = ModernUI.createOutlineButton("Novo");
 
-        actions.add(btnNew);
-        actions.add(btnExcluir);
-        actions.add(btnSave);
+        btnMap.addActionListener(e -> ExternalService.abrirNoMapa(tfDestino.getText()));
+        btnSave.addActionListener(e -> save());
+        btnExcluir.addActionListener(e -> delete());
+        btnClr.addActionListener(e -> clear());
+        cbTipo.addActionListener(e -> toggle());
 
-        formCard.add(fields, BorderLayout.CENTER);
-        formCard.add(actions, BorderLayout.SOUTH);
+        btns.add(btnMap); btns.add(btnClr); btns.add(btnExcluir); btns.add(btnSave);
+        form.add(grid, BorderLayout.CENTER);
+        form.add(btns, BorderLayout.SOUTH);
 
-        JPanel tableCard = ModernUI.createCard();
-        tableCard.setLayout(new BorderLayout());
-        tableCard.setBorder(BorderFactory.createEmptyBorder());
-
-        tableModel = new DefaultTableModel(new Object[]{"ID", "Tipo", "Destino", "Valor", "Moeda", "Cambio"}, 0) {
-            @Override
-            public boolean isCellEditable(int row, int column) { return false; }
-        };
-
+        JPanel tableP = ModernUI.createCard();
+        tableP.setLayout(new BorderLayout());
+        tableModel = new DefaultTableModel(new Object[]{"ID", "Tipo", "Destino", "Valor"},0);
         table = new JTable(tableModel);
         ModernUI.styleTable(table);
+        tableP.add(new JScrollPane(table));
+        table.getSelectionModel().addListSelectionListener(e -> { if(!e.getValueIsAdjusting()) pop(); });
 
-        JScrollPane scroll = new JScrollPane(table);
-        scroll.setBorder(BorderFactory.createEmptyBorder());
-        scroll.getViewport().setBackground(Color.WHITE);
-        tableCard.add(scroll, BorderLayout.CENTER);
-
-        table.getSelectionModel().addListSelectionListener(e -> {
-            if (!e.getValueIsAdjusting()) onTableSelection();
-        });
-
-        content.add(formCard, BorderLayout.NORTH);
-        content.add(tableCard, BorderLayout.CENTER);
-        main.add(content, BorderLayout.CENTER);
+        JSplitPane split = new JSplitPane(JSplitPane.VERTICAL_SPLIT, form, tableP);
+        split.setOpaque(false); split.setBorder(null); split.setDividerLocation(300);
+        main.add(split, BorderLayout.CENTER);
         setContentPane(main);
+        toggle();
+        applyPermissions();
     }
 
-    private void styleCombo(JComboBox box) {
-        box.setFont(ModernUI.FONT_BODY);
-        box.setBackground(Color.WHITE);
-        box.setBorder(BorderFactory.createLineBorder(new Color(209, 213, 219)));
+    private void toggle() {
+        boolean inter = cbTipo.getSelectedItem().equals("Internacional");
+        tfMoeda.setEnabled(inter); tfCambio.setEnabled(inter); tfEmb.setEnabled(inter);
     }
 
-    private void toggleTipoFields() {
-        boolean inter = "Internacional".equalsIgnoreCase((String) cbTipo.getSelectedItem());
-        setSt(tfMoeda, inter);
-        setSt(tfTaxaCambio, inter);
-        setSt(tfTaxaEmbarque, inter);
+    private void fetch() {
+        new Thread(() -> {
+            Double val = ExternalService.getCotacao(tfMoeda.getText());
+            if(val != null) SwingUtilities.invokeLater(() -> tfCambio.setText(String.valueOf(val)));
+        }).start();
     }
 
-    private void setSt(JTextField tf, boolean en) {
-        tf.setEnabled(en);
-        tf.setBackground(en ? Color.WHITE : new Color(243, 244, 246));
+    private void loadData() {
+        tableModel.setRowCount(0);
+        repo.findAll().forEach(p -> tableModel.addRow(new Object[]{p.getId(), (p instanceof PacoteNacional ? "Nac" : "Intl"), p.getDestino(), p.getValorBase()}));
     }
 
-    private void onSalvar() {
+    private void save() {
         try {
-            String dest = tfDestino.getText();
-            if(dest.isEmpty()) throw new IllegalArgumentException("Destino é obrigatório");
-
-            int dur = Integer.parseInt(tfDuracao.getText());
-            double val = Double.parseDouble(tfValorBase.getText().replace(",", "."));
-
             Pacote p;
-            if (cbTipo.getSelectedItem().equals("Nacional")) {
+            String dest = tfDestino.getText();
+            int dur = Integer.parseInt(tfDuracao.getText());
+            double val = Double.parseDouble(tfValor.getText().replace(",","."));
+            if(cbTipo.getSelectedItem().equals("Nacional")) {
                 p = new PacoteNacional(null, dest, dur, val);
             } else {
-                p = new PacoteInternacional(null, dest, dur, val, tfMoeda.getText(), Double.parseDouble(tfTaxaCambio.getText()));
-                ((PacoteInternacional) p).setTaxaEmbarque(Double.parseDouble(tfTaxaEmbarque.getText()));
+                p = new PacoteInternacional(null, dest, dur, val, tfMoeda.getText(), Double.parseDouble(tfCambio.getText()));
+                ((PacoteInternacional)p).setTaxaEmbarque(Double.parseDouble(tfEmb.getText()));
             }
-
-            if (!tfId.getText().isEmpty() && !tfId.getText().equals("Auto")) {
+            if(!tfId.getText().equals("Auto")) {
                 p.setId(Integer.parseInt(tfId.getText()));
                 repo.update(p);
-                JOptionPane.showMessageDialog(this, "Pacote atualizado!");
-            } else {
-                repo.insert(p);
-                JOptionPane.showMessageDialog(this, "Pacote criado!");
-            }
-
-            loadTableData();
-            clearForm();
-        } catch (NumberFormatException nfe) {
-            JOptionPane.showMessageDialog(this, "Verifique os campos numéricos (Duração, Valor, Taxas).");
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(this, "Erro: " + e.getMessage());
-        }
+            } else repo.insert(p);
+            loadData(); clear(); JOptionPane.showMessageDialog(this, "Salvo!");
+        } catch(Exception e) { JOptionPane.showMessageDialog(this, "Erro: " + e.getMessage()); }
     }
 
-    private void onTableSelection() {
+    private void pop() {
         int r = table.getSelectedRow();
-        if (r == -1) return;
-
-        try {
-            Object idObj = table.getValueAt(r, 0);
-            int id = Integer.parseInt(idObj.toString());
-
-            repo.findById(id).ifPresent(p -> {
+        if(r >= 0) {
+            repo.findById((int)tableModel.getValueAt(r,0)).ifPresent(p -> {
                 tfId.setText(String.valueOf(p.getId()));
                 tfDestino.setText(p.getDestino());
                 tfDuracao.setText(String.valueOf(p.getDuracao()));
-                tfValorBase.setText(String.valueOf(p.getValorBase()));
-
-                if (p instanceof PacoteInternacional pi) {
+                tfValor.setText(String.valueOf(p.getValorBase()));
+                if(p instanceof PacoteInternacional pi) {
                     cbTipo.setSelectedItem("Internacional");
                     tfMoeda.setText(pi.getMoeda());
-                    tfTaxaCambio.setText(String.valueOf(pi.getTaxaCambio()));
-                    tfTaxaEmbarque.setText(String.valueOf(pi.getTaxaEmbarque()));
-                } else {
-                    cbTipo.setSelectedItem("Nacional");
-                    clearInternacional();
-                }
-
-                toggleTipoFields();
-                btnSave.setText("Atualizar");
+                    tfCambio.setText(String.valueOf(pi.getTaxaCambio()));
+                    tfEmb.setText(String.valueOf(pi.getTaxaEmbarque()));
+                } else cbTipo.setSelectedItem("Nacional");
+                toggle();
             });
-        } catch (Exception e) {
-            System.err.println("Erro ao selecionar: " + e.getMessage());
         }
     }
 
-    private void onExcluir() {
-        if (!PermissionUtil.requireAdmin(this, "Excluir", "PacoteForm")) return;
-
-        if (!tfId.getText().isEmpty() && !tfId.getText().equals("Auto")) {
-            if(JOptionPane.showConfirmDialog(this, "Excluir pacote?", "Confirmação", JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION) {
-                repo.delete(Integer.parseInt(tfId.getText()));
-                loadTableData();
-                clearForm();
-            }
-        } else {
-            JOptionPane.showMessageDialog(this, "Selecione um pacote para excluir.");
+    private void delete() {
+        if(PermissionUtil.requireAdmin(this, "Excluir", "Pacotes") && !tfId.getText().equals("Auto")) {
+            repo.delete(Integer.parseInt(tfId.getText()));
+            loadData(); clear();
         }
     }
 
-    private void clearForm() {
-        tfId.setText("Auto");
-        tfDestino.setText("");
-        tfDuracao.setText("");
-        tfValorBase.setText("");
-        clearInternacional();
+    private void clear() {
+        tfId.setText("Auto"); tfDestino.setText("Destino"); tfValor.setText("0.0");
         table.clearSelection();
-        btnSave.setText("Salvar");
-    }
-
-    private void clearInternacional() {
-        tfMoeda.setText("");
-        tfTaxaCambio.setText("");
-        tfTaxaEmbarque.setText("250.0");
-    }
-
-    private void loadTableData() {
-        tableModel.setRowCount(0);
-        repo.findAll().forEach(p -> {
-            if (p instanceof PacoteInternacional pi)
-                tableModel.addRow(new Object[]{p.getId(), "Intl", p.getDestino(), p.getValorBase(), pi.getMoeda(), pi.getTaxaCambio()});
-            else tableModel.addRow(new Object[]{p.getId(), "Nac", p.getDestino(), p.getValorBase(), "-", "-"});
-        });
     }
 
     private void applyPermissions() {
-        if (btnExcluir != null) btnExcluir.setEnabled(Sessao.getPerfil() != null && Sessao.getPerfil().equals("admin"));
+        if(btnExcluir!=null) btnExcluir.setEnabled(Sessao.getPerfil()!=null && Sessao.getPerfil().equals("admin"));
     }
 }
