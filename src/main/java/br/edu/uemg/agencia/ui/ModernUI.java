@@ -2,7 +2,6 @@ package br.edu.uemg.agencia.ui;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
-import javax.swing.border.LineBorder;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.JTableHeader;
 import java.awt.*;
@@ -11,58 +10,65 @@ import java.awt.event.MouseEvent;
 
 public class ModernUI {
 
-    public static boolean isDarkMode = false;
+    public static boolean isDark = true;
 
-    public static final Color COL_BG = Color.decode("#F3F4F6");
-    public static final Color COL_SURFACE = Color.WHITE;
+    public static Color COL_BG;
+    public static Color COL_SIDEBAR;
+    public static Color COL_CARD;
+    public static Color COL_TEXT_H1;
+    public static Color COL_TEXT_BODY;
+    public static Color COL_INPUT;
+    public static Color COL_BORDER;
 
-    public static final Color COL_PRIMARY_1 = Color.decode("#4F46E5");
-    public static final Color COL_PRIMARY_2 = Color.decode("#7C3AED");
+    public static final Color BRAND = Color.decode("#6C63FF");
+    public static final Color ACCENT = Color.decode("#00D2D3");
+    public static final Color DANGER = Color.decode("#FF6B6B");
+    public static final Color SUCCESS = Color.decode("#1DD1A1");
 
-    public static final Color COL_TEXT_MAIN = Color.decode("#1F2937");
-    public static final Color COL_TEXT_LIGHT = Color.decode("#6B7280");
+    public static final Font FONT_BIG = new Font("SansSerif", Font.BOLD, 28);
+    public static final Font FONT_H1 = new Font("SansSerif", Font.BOLD, 20);
+    public static final Font FONT_BOLD = new Font("SansSerif", Font.BOLD, 12);
+    public static final Font FONT_PLAIN = new Font("SansSerif", Font.PLAIN, 12);
+    public static final Font FONT_ICON = new Font("Segoe UI Emoji", Font.PLAIN, 18);
 
-    public static final Color COL_ACCENT_SUCCESS = Color.decode("#10B981");
-    public static final Color COL_ACCENT_DANGER = Color.decode("#EF4444");
-    public static final Color COL_ACCENT_WARNING = Color.decode("#F59E0B");
-    public static final Color COL_BORDER = Color.decode("#E5E7EB");
-
-    public static final Font FONT_HERO = new Font("Segoe UI", Font.BOLD, 28);
-    public static final Font FONT_HEADER = new Font("Segoe UI", Font.BOLD, 22);
-    public static final Font FONT_H1 = new Font("Segoe UI", Font.BOLD, 20);
-    public static final Font FONT_H2 = new Font("Segoe UI", Font.BOLD, 16);
-    public static final Font FONT_BODY = new Font("Segoe UI", Font.PLAIN, 14);
-    public static final Font FONT_BOLD = new Font("Segoe UI", Font.BOLD, 14);
-
-    public static Color getBgColor() { return COL_BG; }
-    public static Color getSurfaceColor() { return COL_SURFACE; }
-    public static Color getTextColor() { return COL_TEXT_MAIN; }
-    public static Color getTextGrayColor() { return COL_TEXT_LIGHT; }
-    public static Color getBorderColor() { return COL_BORDER; }
-
-    public static void applyTheme(JFrame frame) {
-        frame.getContentPane().setBackground(COL_BG);
-        try {
-            for (UIManager.LookAndFeelInfo info : UIManager.getInstalledLookAndFeels()) {
-                if ("Nimbus".equals(info.getName())) {
-                    UIManager.setLookAndFeel(info.getClassName());
-                    break;
-                }
-            }
-        } catch (Exception e) {}
+    static {
+        updateThemeColors();
     }
 
-    public static JPanel createGradientPanel() {
-        return new JPanel() {
-            @Override
-            protected void paintComponent(Graphics g) {
-                Graphics2D g2 = (Graphics2D) g;
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                GradientPaint gp = new GradientPaint(0, 0, COL_PRIMARY_1, getWidth(), getHeight(), COL_PRIMARY_2);
-                g2.setPaint(gp);
-                g2.fillRect(0, 0, getWidth(), getHeight());
-            }
-        };
+    public static void updateThemeColors() {
+        if (isDark) {
+            COL_BG = Color.decode("#121212");
+            COL_SIDEBAR = Color.decode("#1A1A1A");
+            COL_CARD = Color.decode("#1E1E1E");
+            COL_TEXT_H1 = Color.decode("#FFFFFF");
+            COL_TEXT_BODY = Color.decode("#B3B3B3");
+            COL_INPUT = Color.decode("#2C2C2C");
+            COL_BORDER = Color.decode("#333333");
+        } else {
+            COL_BG = Color.decode("#F4F7FC");
+            COL_SIDEBAR = Color.decode("#FFFFFF");
+            COL_CARD = Color.decode("#FFFFFF");
+            COL_TEXT_H1 = Color.decode("#2D3436");
+            COL_TEXT_BODY = Color.decode("#636E72");
+            COL_INPUT = Color.decode("#EDF2F7");
+            COL_BORDER = Color.decode("#DFE6E9");
+        }
+    }
+
+    public static void setupTheme(JFrame frame) {
+        updateThemeColors();
+        frame.getContentPane().setBackground(COL_BG);
+        try {
+            UIManager.put("ScrollBar.thumb", new javax.swing.plaf.ColorUIResource(BRAND));
+            UIManager.put("ScrollBar.track", new javax.swing.plaf.ColorUIResource(COL_BG));
+            UIManager.put("ScrollBar.width", 10);
+        } catch(Exception ignored){}
+    }
+
+    public static void toggleTheme(JFrame frame) {
+        isDark = !isDark;
+        setupTheme(frame);
+        SwingUtilities.updateComponentTreeUI(frame);
     }
 
     public static JPanel createCard() {
@@ -71,112 +77,79 @@ public class ModernUI {
             protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g;
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-
-                g2.setColor(new Color(0, 0, 0, 15));
-                g2.fillRoundRect(4, 4, getWidth()-8, getHeight()-8, 20, 20);
-
-                g2.setColor(COL_SURFACE);
-                g2.fillRoundRect(0, 0, getWidth()-4, getHeight()-4, 20, 20);
+                if(!isDark) {
+                    g2.setColor(new Color(0,0,0,10));
+                    g2.fillRoundRect(3, 3, getWidth()-6, getHeight()-6, 15, 15);
+                } else {
+                    g2.setColor(new Color(255,255,255,10));
+                    g2.drawRoundRect(0,0,getWidth()-1,getHeight()-1, 15, 15);
+                }
+                g2.setColor(COL_CARD);
+                g2.fillRoundRect(0, 0, getWidth()-4, getHeight()-4, 15, 15);
             }
         };
         card.setOpaque(false);
-        card.setBorder(new EmptyBorder(20, 25, 20, 25));
+        card.setBorder(new EmptyBorder(15, 20, 15, 20));
         return card;
     }
 
-    public static JPanel createFieldGroup(String labelText, JComponent inputComponent) {
-        JPanel panel = new JPanel();
-        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-        panel.setOpaque(false);
-        panel.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-        JLabel lbl = new JLabel(labelText);
-        lbl.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        lbl.setForeground(COL_TEXT_LIGHT);
-        lbl.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-        inputComponent.setAlignmentX(Component.LEFT_ALIGNMENT);
-        inputComponent.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
-
-        panel.add(lbl);
-        panel.add(Box.createVerticalStrut(5));
-        panel.add(inputComponent);
-
-        return panel;
-    }
-
-    public static JButton createButton(String text, boolean isPrimary) {
-        return createStyledButton(text, isPrimary ? COL_PRIMARY_1 : COL_SURFACE, isPrimary ? Color.WHITE : COL_TEXT_MAIN, isPrimary);
-    }
-
-    public static JButton createFlatButton(String text, Color textColor) {
-        JButton btn = new JButton(text);
-        btn.setFont(FONT_BOLD);
-        btn.setForeground(textColor);
-        btn.setBackground(new Color(0,0,0,0));
-        btn.setFocusPainted(false);
-        btn.setBorderPainted(false);
-        btn.setContentAreaFilled(false);
-        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-
-        btn.addMouseListener(new MouseAdapter() {
-            public void mouseEntered(MouseEvent e) { btn.setForeground(textColor.darker()); }
-            public void mouseExited(MouseEvent e) { btn.setForeground(textColor); }
-        });
-        return btn;
-    }
-
-    private static JButton createStyledButton(String text, Color bg, Color fg, boolean isGradient) {
+    public static JButton createButton(String text) {
         JButton btn = new JButton(text) {
-            private boolean hover = false;
             @Override
             protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g;
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                GradientPaint gp = new GradientPaint(
+                        0, 0, BRAND,
+                        getWidth(), 0, getModel().isRollover() ? BRAND.brighter() : BRAND.darker()
+                );
+                g2.setPaint(gp);
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 10, 10);
 
-                if (isGradient) {
-                    GradientPaint gp = new GradientPaint(0, 0,
-                            hover ? COL_PRIMARY_1.brighter() : COL_PRIMARY_1,
-                            getWidth(), 0,
-                            hover ? COL_PRIMARY_2.brighter() : COL_PRIMARY_2);
-                    g2.setPaint(gp);
-                } else {
-                    g2.setColor(hover ? new Color(245, 247, 250) : bg);
-                }
-
-                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 12, 12);
-
-                if (!isGradient) {
-                    g2.setColor(COL_BORDER);
-                    g2.setStroke(new BasicStroke(1));
-                    g2.drawRoundRect(0, 0, getWidth()-1, getHeight()-1, 12, 12);
-                }
-                super.paintComponent(g);
+                g2.setColor(Color.WHITE);
+                g2.setFont(FONT_BOLD);
+                FontMetrics fm = g2.getFontMetrics();
+                int x = (getWidth() - fm.stringWidth(getText())) / 2;
+                int y = (getHeight() - fm.getHeight()) / 2 + fm.getAscent();
+                g2.drawString(getText(), x, y);
             }
         };
-
-        btn.setFont(FONT_BOLD);
-        btn.setForeground(fg);
-        btn.setFocusPainted(false);
         btn.setBorderPainted(false);
+        btn.setFocusPainted(false);
         btn.setContentAreaFilled(false);
         btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        btn.setBorder(new EmptyBorder(10, 20, 10, 20));
+        btn.setPreferredSize(new Dimension(130, 35));
+        btn.setMaximumSize(new Dimension(Integer.MAX_VALUE, 35));
+        return btn;
+    }
 
-        btn.addMouseListener(new MouseAdapter() {
-            public void mouseEntered(MouseEvent e) {
-                try {
-                    java.lang.reflect.Field f = btn.getClass().getDeclaredField("hover");
-                    f.setAccessible(true); f.setBoolean(btn, true); btn.repaint();
-                } catch(Exception ex) {}
+    public static JButton createOutlineButton(String text) {
+        JButton btn = new JButton(text) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g;
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                if (getModel().isRollover()) {
+                    g2.setColor(new Color(BRAND.getRed(), BRAND.getGreen(), BRAND.getBlue(), 30));
+                    g2.fillRoundRect(0, 0, getWidth(), getHeight(), 10, 10);
+                }
+                g2.setColor(BRAND);
+                g2.setStroke(new BasicStroke(1.5f));
+                g2.drawRoundRect(1, 1, getWidth()-3, getHeight()-3, 10, 10);
+
+                g2.setFont(FONT_BOLD);
+                FontMetrics fm = g2.getFontMetrics();
+                int x = (getWidth() - fm.stringWidth(getText())) / 2;
+                int y = (getHeight() - fm.getHeight()) / 2 + fm.getAscent();
+                g2.drawString(getText(), x, y);
             }
-            public void mouseExited(MouseEvent e) {
-                try {
-                    java.lang.reflect.Field f = btn.getClass().getDeclaredField("hover");
-                    f.setAccessible(true); f.setBoolean(btn, false); btn.repaint();
-                } catch(Exception ex) {}
-            }
-        });
+        };
+        btn.setBorderPainted(false);
+        btn.setFocusPainted(false);
+        btn.setContentAreaFilled(false);
+        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btn.setPreferredSize(new Dimension(130, 35));
+        btn.setMaximumSize(new Dimension(Integer.MAX_VALUE, 35));
         return btn;
     }
 
@@ -184,57 +157,74 @@ public class ModernUI {
         JTextField tf = new JTextField() {
             @Override
             protected void paintComponent(Graphics g) {
-                super.paintComponent(g);
                 Graphics2D g2 = (Graphics2D) g;
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(COL_BORDER);
-                g2.setStroke(new BasicStroke(1));
-                g2.drawRoundRect(0, 0, getWidth()-1, getHeight()-1, 10, 10);
+
+                g2.setColor(COL_INPUT);
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 8, 8);
+
+                if (isFocusOwner()) {
+                    g2.setColor(BRAND);
+                    g2.setStroke(new BasicStroke(1.5f));
+                    g2.drawRoundRect(1, 1, getWidth()-2, getHeight()-2, 8, 8);
+                }
+                super.paintComponent(g);
             }
         };
-        tf.setFont(FONT_BODY);
-        tf.setForeground(COL_TEXT_MAIN);
-        tf.setBackground(Color.WHITE);
-        tf.setBorder(new EmptyBorder(8, 12, 8, 12));
+        tf.setText(placeholder);
+        tf.setFont(FONT_PLAIN);
+        tf.setForeground(COL_TEXT_BODY);
+        tf.setCaretColor(BRAND);
+        tf.setOpaque(false);
+
+        tf.setBorder(new EmptyBorder(5, 10, 5, 10));
+        tf.setPreferredSize(new Dimension(200, 35));
+        tf.setMaximumSize(new Dimension(Integer.MAX_VALUE, 35));
+
+        tf.addFocusListener(new java.awt.event.FocusAdapter() {
+            public void focusGained(java.awt.event.FocusEvent evt) {
+                if (tf.getText().equals(placeholder)) { tf.setText(""); tf.setForeground(COL_TEXT_H1); }
+            }
+            public void focusLost(java.awt.event.FocusEvent evt) {
+                if (tf.getText().isEmpty()) { tf.setText(placeholder); tf.setForeground(COL_TEXT_BODY); }
+            }
+        });
         return tf;
     }
 
     public static void styleTable(JTable table) {
         table.setRowHeight(40);
-        table.setFont(FONT_BODY);
+        table.setFont(FONT_PLAIN);
+        table.setBackground(COL_CARD);
+        table.setForeground(COL_TEXT_H1);
+        table.setSelectionBackground(new Color(108, 99, 255, 50));
+        table.setSelectionForeground(COL_TEXT_H1);
         table.setShowVerticalLines(false);
-        table.setShowHorizontalLines(true);
         table.setGridColor(COL_BORDER);
-        table.setSelectionBackground(new Color(238, 242, 255));
-        table.setSelectionForeground(COL_PRIMARY_1);
         table.setBorder(BorderFactory.createEmptyBorder());
 
         JTableHeader header = table.getTableHeader();
         header.setDefaultRenderer((t, value, isSelected, hasFocus, row, col) -> {
-            JLabel l = new JLabel(value.toString());
-            l.setFont(new Font("Segoe UI", Font.BOLD, 12));
-            l.setForeground(COL_TEXT_LIGHT);
-            l.setBackground(COL_SURFACE);
+            JLabel l = new JLabel(value.toString().toUpperCase());
+            l.setFont(new Font("SansSerif", Font.BOLD, 10));
+            l.setForeground(COL_TEXT_BODY);
+            l.setBackground(COL_BG);
             l.setOpaque(true);
-            l.setBorder(new EmptyBorder(10, 10, 10, 10));
-            l.setBorder(BorderFactory.createCompoundBorder(
-                    BorderFactory.createMatteBorder(0,0,1,0, COL_BORDER),
-                    new EmptyBorder(10, 10, 10, 10)
-            ));
+            l.setBorder(new EmptyBorder(8, 10, 8, 10));
             return l;
         });
 
-        table.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
-            @Override
-            public Component getTableCellRendererComponent(JTable t, Object v, boolean s, boolean f, int r, int c) {
-                Component comp = super.getTableCellRendererComponent(t, v, s, f, r, c);
-                setBorder(new EmptyBorder(0, 15, 0, 0));
-                if (!s) {
-                    comp.setBackground(Color.WHITE);
-                    comp.setForeground(COL_TEXT_MAIN);
-                }
-                return comp;
-            }
-        });
+        if(table.getParent() instanceof JViewport) ((JComponent)table.getParent()).setBackground(COL_CARD);
+    }
+
+    public static JPanel createLabelGroup(String text, JComponent comp) {
+        JPanel p = new JPanel(new BorderLayout(0,4));
+        p.setOpaque(false);
+        JLabel l = new JLabel(text);
+        l.setFont(new Font("SansSerif", Font.BOLD, 11));
+        l.setForeground(COL_TEXT_BODY);
+        p.add(l, BorderLayout.NORTH);
+        p.add(comp, BorderLayout.CENTER);
+        return p;
     }
 }
