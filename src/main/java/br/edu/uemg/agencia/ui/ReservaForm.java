@@ -1,271 +1,183 @@
 package br.edu.uemg.agencia.ui;
 
 import br.edu.uemg.agencia.auth.PermissionUtil;
-import br.edu.uemg.agencia.modelo.Cliente;
-import br.edu.uemg.agencia.modelo.Pacote;
-import br.edu.uemg.agencia.modelo.Reserva;
-import br.edu.uemg.agencia.pagamento.PagamentoFactory;
-import br.edu.uemg.agencia.pagamento.Pagavel;
-import br.edu.uemg.agencia.repos.ClienteRepo;
-import br.edu.uemg.agencia.repos.PacoteRepo;
-import br.edu.uemg.agencia.repos.ReservaRepo;
+import br.edu.uemg.agencia.modelo.*;
+import br.edu.uemg.agencia.repos.*;
 import br.edu.uemg.agencia.servico.ReservaService;
-
+import br.edu.uemg.agencia.util.ExternalService;
+import br.edu.uemg.agencia.util.FormatUtil;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.io.File;
 import java.io.FileWriter;
+import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.Optional;
 
 public class ReservaForm extends JFrame {
-
     private final ReservaService service = new ReservaService();
-    private final ClienteRepo clienteRepo = new ClienteRepo();
-    private final PacoteRepo pacoteRepo = new PacoteRepo();
-
     private JComboBox<Cliente> cbCliente;
     private JComboBox<Pacote> cbPacote;
-    private JLabel lblTotal;
+    private JFormattedTextField tfData;
+    private JLabel lblTotal, lblRetorno;
     private JRadioButton rbPix, rbCartao;
     private DefaultTableModel tableModel;
     private JTable table;
 
     public ReservaForm() {
-        setTitle("Central de Reservas");
+        ModernUI.setupTheme(this);
+        setTitle("Vendas");
         setSize(1100, 800);
         setLocationRelativeTo(null);
-        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         initUI();
-        loadCombos();
-        loadTable();
+        load();
     }
 
     private void initUI() {
-        JPanel main = new JPanel(new BorderLayout());
-        main.setBackground(ModernUI.getBgColor());
+        JPanel main = new JPanel(new BorderLayout(20,20));
+        main.setBackground(ModernUI.COL_BG);
+        main.setBorder(new EmptyBorder(20,20,20,20));
 
-        JPanel header = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        header.setBackground(ModernUI.getSurfaceColor());
-        header.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createMatteBorder(0,0,1,0, ModernUI.getBorderColor()),
-                new EmptyBorder(20, 40, 20, 40)
-        ));
-        JLabel title = new JLabel("Reservas & Vendas");
-        title.setFont(ModernUI.FONT_HEADER);
-        title.setForeground(ModernUI.getTextColor());
-        header.add(title);
-        main.add(header, BorderLayout.NORTH);
+        JPanel form = ModernUI.createCard();
+        form.setLayout(new BorderLayout(20,0));
 
-        JPanel content = new JPanel(new BorderLayout(0, 25));
-        content.setOpaque(false);
-        content.setBorder(new EmptyBorder(30, 40, 30, 40));
+        JPanel inputs = new JPanel(new GridLayout(4, 1, 10, 10));
+        inputs.setOpaque(false);
 
-        JPanel simCard = ModernUI.createCard();
-        simCard.setLayout(new BorderLayout(20, 0));
+        cbCliente = new JComboBox<>();
+        cbPacote = new JComboBox<>();
+        tfData = FormatUtil.createFormattedField("##/##/####");
+        tfData.setFont(ModernUI.FONT_PLAIN);
 
-        JPanel inputs = new JPanel(new GridLayout(3, 1, 0, 15));
-        inputs.setBackground(ModernUI.getSurfaceColor());
-
-        cbCliente = new JComboBox<>(); styleCombo(cbCliente);
-        cbPacote = new JComboBox<>(); styleCombo(cbPacote);
-
-        JPanel radioPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        radioPanel.setBackground(ModernUI.getSurfaceColor());
-
-        rbPix = new JRadioButton("PIX");
-        rbPix.setBackground(ModernUI.getSurfaceColor());
-        rbPix.setForeground(ModernUI.getTextColor());
-        rbPix.setSelected(true);
-
-        rbCartao = new JRadioButton("Cartão (+2.5%)");
-        rbCartao.setBackground(ModernUI.getSurfaceColor());
-        rbCartao.setForeground(ModernUI.getTextColor());
-
+        JPanel pay = new JPanel(new FlowLayout(FlowLayout.LEFT)); pay.setOpaque(false);
+        rbPix = new JRadioButton("PIX"); rbPix.setForeground(ModernUI.COL_TEXT_H1); rbPix.setSelected(true); rbPix.setOpaque(false);
+        rbCartao = new JRadioButton("Cartão"); rbCartao.setForeground(ModernUI.COL_TEXT_H1); rbCartao.setOpaque(false);
         ButtonGroup bg = new ButtonGroup(); bg.add(rbPix); bg.add(rbCartao);
-        radioPanel.add(rbPix); radioPanel.add(rbCartao);
+        pay.add(rbPix); pay.add(rbCartao);
 
-        inputs.add(ModernUI.createFieldGroup("1. Cliente", cbCliente));
-        inputs.add(ModernUI.createFieldGroup("2. Pacote", cbPacote));
-        inputs.add(ModernUI.createFieldGroup("3. Pagamento", radioPanel));
+        inputs.add(ModernUI.createLabelGroup("Cliente", cbCliente));
+        inputs.add(ModernUI.createLabelGroup("Pacote", cbPacote));
+        inputs.add(ModernUI.createLabelGroup("Data Ida", tfData));
+        inputs.add(ModernUI.createLabelGroup("Pagamento", pay));
 
-        JPanel totalPanel = new JPanel(new BorderLayout());
-        totalPanel.setBackground(new Color(248, 250, 252));
-        totalPanel.setBorder(new EmptyBorder(20, 40, 20, 40));
+        JPanel totalP = new JPanel(new BorderLayout());
+        totalP.setOpaque(false);
+        totalP.setBorder(new EmptyBorder(10,30,10,30));
+        JLabel lTot = new JLabel("TOTAL"); lTot.setForeground(ModernUI.COL_TEXT_BODY);
+        lblTotal = new JLabel("R$ 0,00"); lblTotal.setFont(new Font("SansSerif", Font.BOLD, 36));
+        lblTotal.setForeground(ModernUI.BRAND);
+        lblRetorno = new JLabel("Retorno: -"); lblRetorno.setForeground(ModernUI.COL_TEXT_BODY);
 
-        JLabel lblTotalTitle = new JLabel("TOTAL ESTIMADO");
-        lblTotalTitle.setFont(ModernUI.FONT_BOLD);
-        lblTotalTitle.setForeground(ModernUI.getTextGrayColor());
+        totalP.add(lTot, BorderLayout.NORTH);
+        totalP.add(lblTotal, BorderLayout.CENTER);
+        totalP.add(lblRetorno, BorderLayout.SOUTH);
 
-        lblTotal = new JLabel("R$ 0,00");
-        lblTotal.setFont(new Font("Segoe UI", Font.BOLD, 36));
-        lblTotal.setForeground(ModernUI.COL_PRIMARY_1);
+        JButton btnConfirm = ModernUI.createButton("CONFIRMAR VENDA");
+        btnConfirm.setPreferredSize(new Dimension(200, 50));
+        btnConfirm.addActionListener(e -> save());
 
-        JButton btnCriar = ModernUI.createButton("Confirmar Venda", true);
-        btnCriar.addActionListener(e -> onCriar());
+        form.add(inputs, BorderLayout.CENTER);
+        form.add(totalP, BorderLayout.EAST);
+        form.add(btnConfirm, BorderLayout.SOUTH);
 
-        totalPanel.add(lblTotalTitle, BorderLayout.NORTH);
-        totalPanel.add(lblTotal, BorderLayout.CENTER);
-        totalPanel.add(btnCriar, BorderLayout.SOUTH);
+        cbPacote.addActionListener(e -> calc());
+        rbPix.addActionListener(e -> calc());
+        rbCartao.addActionListener(e -> calc());
+        tfData.addKeyListener(new java.awt.event.KeyAdapter() {
+            public void keyReleased(java.awt.event.KeyEvent e) { if(tfData.getText().length()==10) calc(); }
+        });
 
-        simCard.add(inputs, BorderLayout.CENTER);
-        simCard.add(totalPanel, BorderLayout.EAST);
+        JPanel list = ModernUI.createCard();
+        list.setLayout(new BorderLayout());
+        JPanel tools = new JPanel(new FlowLayout(FlowLayout.LEFT)); tools.setOpaque(false);
+        JButton btnPay = ModernUI.createOutlineButton("Confirmar Pagto");
+        JButton btnHtml = ModernUI.createOutlineButton("HTML Recibo");
+        JButton btnCancel = ModernUI.createButton("Cancelar"); btnCancel.setBackground(ModernUI.DANGER);
 
-        JPanel listCard = ModernUI.createCard();
-        listCard.setLayout(new BorderLayout());
+        btnPay.addActionListener(e -> confirmPay());
+        btnHtml.addActionListener(e -> exportHtml());
+        btnCancel.addActionListener(e -> cancel());
 
-        JPanel toolbar = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        toolbar.setBackground(ModernUI.getSurfaceColor());
+        tools.add(btnPay); tools.add(btnHtml); tools.add(btnCancel);
+        list.add(tools, BorderLayout.NORTH);
 
-        JButton btnConfirmar = ModernUI.createFlatButton("✔ Confirmar Pagto", ModernUI.COL_ACCENT_SUCCESS);
-        JButton btnCancelar = ModernUI.createFlatButton("✖ Cancelar", ModernUI.COL_ACCENT_DANGER);
-        JButton btnExport = ModernUI.createFlatButton("📄 Recibo", ModernUI.COL_PRIMARY_1);
-
-        btnConfirmar.addActionListener(e -> onConfirmarPagto());
-        btnCancelar.addActionListener(e -> onCancelar());
-        btnExport.addActionListener(e -> onExportar());
-
-        toolbar.add(btnConfirmar); toolbar.add(btnExport); toolbar.add(btnCancelar);
-
-        tableModel = new DefaultTableModel(new Object[]{"ID", "Cliente", "Pacote", "Status", "Valor"}, 0);
+        tableModel = new DefaultTableModel(new Object[]{"ID", "Cliente", "Pacote", "Status", "Valor"},0);
         table = new JTable(tableModel);
         ModernUI.styleTable(table);
-        JScrollPane scroll = new JScrollPane(table);
-        scroll.setBorder(BorderFactory.createEmptyBorder());
-        scroll.getViewport().setBackground(ModernUI.getSurfaceColor());
+        list.add(new JScrollPane(table), BorderLayout.CENTER);
 
-        listCard.add(toolbar, BorderLayout.NORTH);
-        listCard.add(scroll, BorderLayout.CENTER);
-
-        content.add(simCard, BorderLayout.NORTH);
-        content.add(listCard, BorderLayout.CENTER);
-        main.add(content, BorderLayout.CENTER);
+        JSplitPane split = new JSplitPane(JSplitPane.VERTICAL_SPLIT, form, list);
+        split.setOpaque(false); split.setBorder(null); split.setDividerLocation(350);
+        main.add(split, BorderLayout.CENTER);
         setContentPane(main);
-
-        cbPacote.addActionListener(e -> updateSimulacao());
-        rbPix.addActionListener(e -> updateSimulacao());
-        rbCartao.addActionListener(e -> updateSimulacao());
     }
 
-    private void styleCombo(JComboBox box) {
-        box.setFont(ModernUI.FONT_BODY);
-        box.setBackground(ModernUI.getSurfaceColor());
-        box.setForeground(ModernUI.getTextColor());
-        box.setBorder(BorderFactory.createLineBorder(ModernUI.getBorderColor()));
+    private void load() {
+        cbCliente.removeAllItems(); new ClienteRepo().findAll().forEach(cbCliente::addItem);
+        cbPacote.removeAllItems(); new PacoteRepo().findAll().forEach(cbPacote::addItem);
+        ComboSearchSupport.enable(cbCliente, new ClienteRepo().findAll(), Cliente::getNome);
+        ComboSearchSupport.enable(cbPacote, new PacoteRepo().findAll(), Pacote::getDestino);
+
+        tableModel.setRowCount(0);
+        service.listarTodas().forEach(r -> tableModel.addRow(new Object[]{r.getId(), r.getCliente().getNome(), r.getPacote().getDestino(), r.getStatus(), r.getValorTotal()}));
     }
 
-    private void updateSimulacao() {
-        Pacote p = (Pacote) cbPacote.getSelectedItem();
-
-        if(p != null) {
-            String tipoSelecionado = rbPix.isSelected() ? "PIX" : "CARTAO";
-            Pagavel estrategia = PagamentoFactory.criar(tipoSelecionado);
-            double valFinal = estrategia.calcularValorFinal(p.getValorBase());
-            lblTotal.setText(String.format("R$ %.2f", valFinal));
-        }
+    private void calc() {
+        try {
+            Pacote p = (Pacote) cbPacote.getSelectedItem();
+            LocalDate d = LocalDate.parse(tfData.getText(), DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+            if(p!=null) {
+                lblRetorno.setText("Retorno: " + d.plusDays(p.getDuracao()));
+                double val = service.simularValorFinal(p, rbCartao.isSelected(), d);
+                lblTotal.setText(String.format("R$ %.2f", val));
+            }
+        } catch(Exception e) { lblRetorno.setText("Data inv."); }
     }
-    private void onCriar() {
+
+    private void save() {
         try {
             Reserva r = new Reserva();
-            r.setCliente((Cliente) cbCliente.getSelectedItem());
-            r.setPacote((Pacote) cbPacote.getSelectedItem());
+            r.setCliente((Cliente)cbCliente.getSelectedItem());
+            r.setPacote((Pacote)cbPacote.getSelectedItem());
+            r.setValorTotal(Double.parseDouble(lblTotal.getText().replace("R$","").replace(",",". நிற்கும்").trim()));
             service.criarReserva(r);
-            loadTable();
-            JOptionPane.showMessageDialog(this, "Venda registrada!");
-        } catch (Exception e) { JOptionPane.showMessageDialog(this, "Erro: " + e.getMessage()); }
+            load();
+            JOptionPane.showMessageDialog(this, "Sucesso!");
+        } catch(Exception e) { JOptionPane.showMessageDialog(this, "Erro: "+e.getMessage()); }
     }
-    private void onConfirmarPagto() {
-        if(!PermissionUtil.requireAdmin(this, "Confirmar Pagamento", "ReservaForm")) return;
-        int row = table.getSelectedRow();
-        if(row < 0) return;
-        try {
-            int id = (int) tableModel.getValueAt(row, 0);
-            Optional<Reserva> r = new ReservaRepo().findById(id);
-            if(r.isPresent()) {
-                String metodo = JOptionPane.showOptionDialog(this, "Confirma o recebimento?", "Pagamento", JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE, null, new String[]{"PIX", "Cartão"}, "PIX") == 1 ? "cartao" : "pix";
-                service.confirmarPagamento(r.get(), metodo);
-                loadTable();
-                JOptionPane.showMessageDialog(this, "Pagamento Confirmado!");
-            }
+
+    private void confirmPay() {
+        if(!PermissionUtil.requireAdmin(this, "Pagto", "Reserva")) return;
+        int r = table.getSelectedRow();
+        if(r>=0) try {
+            int id = (int)tableModel.getValueAt(r,0);
+            service.confirmarPagamento(new ReservaRepo().findById(id).get(), rbPix.isSelected()?"pix":"cartao");
+            load();
         } catch(Exception e) { e.printStackTrace(); }
     }
-    private void onExportar() {
-        int row = table.getSelectedRow();
-        if (row < 0) {
-            JOptionPane.showMessageDialog(this, "Selecione uma reserva");
-            return;
-        }
 
+    private void cancel() {
+        if(!PermissionUtil.requireAdmin(this, "Cancel", "Reserva")) return;
+        int r = table.getSelectedRow();
+        if(r>=0) {
+            new ReservaRepo().findById((int)tableModel.getValueAt(r,0)).ifPresent(service::cancelarReserva);
+            load();
+        }
+    }
+
+    private void exportHtml() {
+        int r = table.getSelectedRow();
+        if(r<0) return;
         try {
-            int id = (int) tableModel.getValueAt(row, 0);
-            Optional<Reserva> r = new ReservaRepo().findById(id);
-
-            if (r.isPresent()) {
-                JFileChooser fc = new JFileChooser();
-                fc.setSelectedFile(new File("Recibo_Reserva_" + id + ".txt"));
-
-                if (fc.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
-                    try (FileWriter fw = new FileWriter(fc.getSelectedFile())) {
-                        fw.write(gerarRecibo(r.get()));
-                    }
-                    JOptionPane.showMessageDialog(this, "Arquivo salvo!");
-                }
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+            int id = (int)tableModel.getValueAt(r,0);
+            Reserva res = new ReservaRepo().findById(id).orElse(null);
+            File f = new File("recibo.html");
+            FileWriter fw = new FileWriter(f);
+            fw.write("<h1>Recibo #"+id+"</h1><p>Cliente: "+res.getCliente().getNome()+"</p><h2>Valor: R$ "+res.getValorTotal()+"</h2>");
+            fw.close();
+            ExternalService.abrirHtml(f);
+        } catch(Exception e) {}
     }
-
-    private void onCancelar() {
-        if(!PermissionUtil.requireAdmin(this, "Cancelar", "ReservaForm")) return;
-        int row = table.getSelectedRow();
-        if(row >= 0) {
-            int id = (int) tableModel.getValueAt(row, 0);
-            new ReservaRepo().findById(id).ifPresent(service::cancelarReserva);
-            loadTable();
-        }
-    }
-    private String gerarRecibo(Reserva r) {
-        DateTimeFormatter f = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
-        return "RECIBO AGENCIA\nReserva: " + r.getId() + "\nData: " + r.getDataReserva().format(f) + "\nCliente: " + r.getCliente().getNome() + "\nValor: " + r.getValorTotal();
-    }
-    private void loadCombos() {
-        cbCliente.removeAllItems(); clienteRepo.findAll().forEach(cbCliente::addItem);
-        cbPacote.removeAllItems(); pacoteRepo.findAll().forEach(cbPacote::addItem);
-
-        cbCliente.setRenderer((l,v,i,s,f) -> {
-            JLabel lbl = new JLabel(v!=null?v.getNome():"");
-            lbl.setOpaque(true);
-            lbl.setBackground(s ? ModernUI.COL_PRIMARY_1 : ModernUI.getSurfaceColor());
-            lbl.setForeground(s ? Color.WHITE : ModernUI.getTextColor());
-            lbl.setBorder(new EmptyBorder(5,10,5,10));
-            return lbl;
-        });
-
-        cbPacote.setRenderer((l,v,i,s,f) -> {
-            JLabel lbl = new JLabel(v!=null?v.getDestino()+" (R$ "+v.getValorBase()+")":"");
-            lbl.setOpaque(true);
-            lbl.setBackground(s ? ModernUI.COL_PRIMARY_1 : ModernUI.getSurfaceColor());
-            lbl.setForeground(s ? Color.WHITE : ModernUI.getTextColor());
-            lbl.setBorder(new EmptyBorder(5,10,5,10));
-            return lbl;
-        });
-
-        ComboSearchSupport.enable(cbCliente, clienteRepo.findAll(), Cliente::getNome);
-        ComboSearchSupport.enable(cbPacote, pacoteRepo.findAll(), Pacote::getDestino);
-    }
-    private void loadTable() {
-        tableModel.setRowCount(0);
-        service.listarTodas().forEach(r -> tableModel.addRow(new Object[]{
-                r.getId(),
-                r.getCliente().getNome(),
-                r.getPacote().getDestino(),
-                r.getStatus(),
-                String.format("R$ %.2f", r.getValorTotal())
-        }));
-    }
-
-
 }
