@@ -1,9 +1,11 @@
 package br.edu.uemg.agencia.testes;
 
-import br.edu.uemg.agencia.modelo.PacoteNacional;
 import br.edu.uemg.agencia.modelo.PacoteInternacional;
-import br.edu.uemg.agencia.servico.ReservaService;
+import br.edu.uemg.agencia.modelo.PacoteNacional;
 import br.edu.uemg.agencia.repos.DatabaseInitializer;
+import br.edu.uemg.agencia.servico.ReservaService;
+
+import java.time.LocalDate;
 
 public class TesteSistema {
 
@@ -30,7 +32,8 @@ public class TesteSistema {
         PacoteNacional pSim = new PacoteNacional(3, "Sim", 1, 1000.0);
         pSim.setImpostoTurismo(0.0);
 
-        double val = service.simularValorFinal(pSim, true);
+        double val = service.simularValorFinal(pSim, true, LocalDate.now());
+
         if (Math.abs(val - 1025.0) < 0.01) System.out.println("[OK] Simulação Cartão");
         else System.out.println("[FAIL] Simulação Cartão: " + val);
 
