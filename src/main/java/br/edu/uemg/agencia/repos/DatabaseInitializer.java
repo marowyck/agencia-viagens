@@ -18,6 +18,12 @@ public class DatabaseInitializer {
                             "cpf TEXT UNIQUE NOT NULL," +
                             "email TEXT," +
                             "telefone TEXT," +
+                            "cep TEXT," +
+                            "logradouro TEXT," +
+                            "bairro TEXT," +
+                            "cidade TEXT," +
+                            "uf TEXT," +
+                            "pontos_fidelidade INTEGER DEFAULT 0," +
                             "created_at TEXT DEFAULT CURRENT_TIMESTAMP," +
                             "updated_at TEXT" +
                             ");"
@@ -108,7 +114,6 @@ public class DatabaseInitializer {
             st.executeUpdate("CREATE INDEX IF NOT EXISTS idx_usuario_username ON usuario(username);");
 
             String adminHash = "240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9";
-
             String atendenteHash = "e94e143d3a999c2004bed70fdc93ae37470fb3c3c5cd328fa20fbd053e65c4f9";
 
             st.executeUpdate(
