@@ -13,13 +13,21 @@ public class ClienteRepo {
     public Cliente insert(Cliente c) {
         if (c == null) throw new IllegalArgumentException("Cliente nulo");
         if (!Validator.isValidCPF(c.getCpf())) throw new IllegalArgumentException("CPF inválido");
-        String sql = "INSERT INTO cliente(nome, cpf, email, telefone) VALUES (?, ?, ?, ?)";
+
+        String sql = "INSERT INTO cliente(nome, cpf, email, telefone, cep, logradouro, bairro, cidade, uf, pontos_fidelidade) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = ConnectionFactory.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setString(1, c.getNome());
             ps.setString(2, c.getCpf());
             ps.setString(3, c.getEmail());
             ps.setString(4, c.getTelefone());
+            ps.setString(5, c.getCep());
+            ps.setString(6, c.getLogradouro());
+            ps.setString(7, c.getBairro());
+            ps.setString(8, c.getCidade());
+            ps.setString(9, c.getUf());
+            ps.setInt(10, c.getPontosFidelidade());
+
             ps.executeUpdate();
             try (ResultSet rs = ps.getGeneratedKeys()) {
                 if (rs.next()) c.setId(rs.getInt(1));
@@ -33,17 +41,36 @@ public class ClienteRepo {
     public void update(Cliente c) {
         if (c == null || c.getId() == null) throw new IllegalArgumentException("Cliente inválido");
         if (!Validator.isValidCPF(c.getCpf())) throw new IllegalArgumentException("CPF inválido");
-        String sql = "UPDATE cliente SET nome = ?, cpf = ?, email = ?, telefone = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?";
+
+        String sql = "UPDATE cliente SET nome=?, cpf=?, email=?, telefone=?, cep=?, logradouro=?, bairro=?, cidade=?, uf=?, pontos_fidelidade=?, updated_at=CURRENT_TIMESTAMP WHERE id=?";
         try (Connection conn = ConnectionFactory.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, c.getNome());
             ps.setString(2, c.getCpf());
             ps.setString(3, c.getEmail());
             ps.setString(4, c.getTelefone());
-            ps.setInt(5, c.getId());
+            ps.setString(5, c.getCep());
+            ps.setString(6, c.getLogradouro());
+            ps.setString(7, c.getBairro());
+            ps.setString(8, c.getCidade());
+            ps.setString(9, c.getUf());
+            ps.setInt(10, c.getPontosFidelidade());
+            ps.setInt(11, c.getId());
             ps.executeUpdate();
         } catch (SQLException e) {
             throw new RuntimeException("Erro ao atualizar cliente: " + e.getMessage(), e);
+        }
+    }
+
+    public void adicionarPontos(int clienteId, int pontosExtras) {
+        String sql = "UPDATE cliente SET pontos_fidelidade = pontos_fidelidade + ? WHERE id = ?";
+        try (Connection conn = ConnectionFactory.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, pontosExtras);
+            ps.setInt(2, clienteId);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
         }
     }
 
@@ -65,14 +92,7 @@ public class ClienteRepo {
             ps.setInt(1, id);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
-                    Cliente c = new Cliente(
-                            rs.getInt("id"),
-                            rs.getString("nome"),
-                            rs.getString("cpf"),
-                            rs.getString("email"),
-                            rs.getString("telefone")
-                    );
-                    return Optional.of(c);
+                    return Optional.of(mapRow(rs));
                 }
             }
         } catch (SQLException e) {
@@ -88,18 +108,43 @@ public class ClienteRepo {
              PreparedStatement ps = conn.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
-                Cliente c = new Cliente(
-                        rs.getInt("id"),
-                        rs.getString("nome"),
-                        rs.getString("cpf"),
-                        rs.getString("email"),
-                        rs.getString("telefone")
-                );
-                list.add(c);
+                list.add(mapRow(rs));
             }
             return list;
         } catch (SQLException e) {
             throw new RuntimeException("Erro ao listar clientes: " + e.getMessage(), e);
         }
+    }
+
+    public List<Cliente> searchByName(String query) {
+        List<Cliente> list = new ArrayList<>();
+        String sql = "SELECT * FROM cliente WHERE LOWER(nome) LIKE ? LIMIT 5";
+        try (Connection conn = ConnectionFactory.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, "%" + query.toLowerCase() + "%");
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) list.add(mapRow(rs));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+
+    private Cliente mapRow(ResultSet rs) throws SQLException {
+        Cliente c = new Cliente(
+                rs.getInt("id"),
+                rs.getString("nome"),
+                rs.getString("cpf"),
+                rs.getString("email"),
+                rs.getString("telefone")
+        );
+        c.setCep(rs.getString("cep"));
+        c.setLogradouro(rs.getString("logradouro"));
+        c.setBairro(rs.getString("bairro"));
+        c.setCidade(rs.getString("cidade"));
+        c.setUf(rs.getString("uf"));
+        c.setPontosFidelidade(rs.getInt("pontos_fidelidade"));
+        return c;
     }
 }

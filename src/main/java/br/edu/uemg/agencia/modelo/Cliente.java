@@ -7,6 +7,14 @@ public class Cliente {
     private String email;
     private String telefone;
 
+    // Novos campos
+    private String cep;
+    private String logradouro;
+    private String bairro;
+    private String cidade;
+    private String uf;
+    private int pontosFidelidade;
+
     public Cliente() {
     }
 
@@ -16,6 +24,7 @@ public class Cliente {
         this.cpf = cpf;
         this.email = email;
         this.telefone = telefone;
+        this.pontosFidelidade = 0;
     }
 
     public Integer getId() {
@@ -56,6 +65,58 @@ public class Cliente {
 
     public void setTelefone(String telefone) {
         this.telefone = telefone;
+    }
+
+    public String getCep() {
+        return cep;
+    }
+
+    public void setCep(String cep) {
+        this.cep = cep;
+    }
+
+    public String getLogradouro() {
+        return logradouro;
+    }
+
+    public void setLogradouro(String logradouro) {
+        this.logradouro = logradouro;
+    }
+
+    public String getBairro() {
+        return bairro;
+    }
+
+    public void setBairro(String bairro) {
+        this.bairro = bairro;
+    }
+
+    public String getCidade() {
+        return cidade;
+    }
+
+    public void setCidade(String cidade) {
+        this.cidade = cidade;
+    }
+
+    public String getUf() {
+        return uf;
+    }
+
+    public void setUf(String uf) {
+        this.uf = uf;
+    }
+
+    public int getPontosFidelidade() {
+        return pontosFidelidade;
+    }
+
+    public void setPontosFidelidade(int pontosFidelidade) {
+        this.pontosFidelidade = pontosFidelidade;
+    }
+
+    public void adicionarPontos(int pts) {
+        this.pontosFidelidade += pts;
     }
 
     @Override

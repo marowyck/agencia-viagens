@@ -2,222 +2,166 @@ package br.edu.uemg.agencia.ui;
 
 import br.edu.uemg.agencia.modelo.Cliente;
 import br.edu.uemg.agencia.repos.ClienteRepo;
+import br.edu.uemg.agencia.util.ExternalService;
+import br.edu.uemg.agencia.util.FormatUtil;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
-import javax.swing.text.MaskFormatter;
 import java.awt.*;
 
 public class ClienteForm extends JFrame {
 
     private final ClienteRepo repo = new ClienteRepo();
-    private JTextField tfId, tfNome, tfEmail;
-    private JFormattedTextField tfCpf, tfTelefone;
+    private JTextField tfId, tfNome, tfEmail, tfLogradouro, tfBairro, tfCidade, tfUf;
+    private JFormattedTextField tfCpf, tfTelefone, tfCep;
     private DefaultTableModel tableModel;
     private JTable table;
-    private JButton btnSave;
+    private JLabel lblPontos;
 
     public ClienteForm() {
-        ModernUI.applyTheme(this);
-        setTitle("Clientes | Agência++");
+        ModernUI.setupTheme(this);
+        setTitle("Clientes");
         setSize(1100, 800);
         setLocationRelativeTo(null);
-        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         initUI();
         loadData();
     }
 
     private void initUI() {
-        JPanel main = new JPanel(new BorderLayout());
+        JPanel main = new JPanel(new BorderLayout(20,20));
         main.setBackground(ModernUI.COL_BG);
+        main.setBorder(new EmptyBorder(20,20,20,20));
 
         JPanel header = new JPanel(new BorderLayout());
-        header.setBackground(Color.WHITE);
-        header.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, ModernUI.COL_BORDER));
-
+        header.setOpaque(false);
         JLabel title = new JLabel("Gerenciar Clientes");
         title.setFont(ModernUI.FONT_H1);
-        title.setBorder(new EmptyBorder(20, 30, 20, 30));
+        title.setForeground(ModernUI.COL_TEXT_H1);
+
+        lblPontos = new JLabel("Pontos: 0");
+        lblPontos.setFont(ModernUI.FONT_BOLD);
+        lblPontos.setForeground(ModernUI.BRAND);
+
         header.add(title, BorderLayout.WEST);
+        header.add(lblPontos, BorderLayout.EAST);
         main.add(header, BorderLayout.NORTH);
 
-        JPanel content = new JPanel(new BorderLayout(0, 20));
-        content.setOpaque(false);
-        content.setBorder(new EmptyBorder(30, 30, 30, 30));
+        JPanel form = ModernUI.createCard();
+        form.setLayout(new BorderLayout(0,15));
 
-        JPanel formCard = ModernUI.createCard();
-        formCard.setLayout(new BorderLayout(0, 20));
-
-        JPanel grid = new JPanel(new GridLayout(2, 3, 20, 20));
+        JPanel grid = new JPanel(new GridLayout(3, 4, 15, 15));
         grid.setOpaque(false);
 
-        tfId = ModernUI.createInput("Automático");
-        tfId.setEditable(false);
-        tfId.setBackground(new Color(245, 245, 245));
+        tfId = ModernUI.createInput("Auto"); tfId.setEditable(false);
+        tfNome = ModernUI.createInput("Nome");
+        tfCpf = FormatUtil.createFormattedField("###.###.###-##");
+        tfEmail = ModernUI.createInput("Email");
+        tfTelefone = FormatUtil.createFormattedField("(##) #####-####");
 
-        tfNome = ModernUI.createInput("Nome Completo");
-        tfCpf = createMaskedField("###.###.###-##");
-        tfEmail = ModernUI.createInput("email@exemplo.com");
-        tfTelefone = createMaskedField("(##) #####-####");
+        tfCep = FormatUtil.createFormattedField("#####-###");
+        JPanel cepP = new JPanel(new BorderLayout(5,0)); cepP.setOpaque(false);
+        cepP.add(tfCep, BorderLayout.CENTER);
+        JButton btnCep = ModernUI.createOutlineButton("🔍"); btnCep.setPreferredSize(new Dimension(40,30));
+        btnCep.addActionListener(e -> buscarCep());
+        cepP.add(btnCep, BorderLayout.EAST);
 
-        grid.add(ModernUI.createFieldGroup("ID", tfId));
-        grid.add(ModernUI.createFieldGroup("Nome Completo", tfNome));
-        grid.add(ModernUI.createFieldGroup("CPF", tfCpf));
-        grid.add(ModernUI.createFieldGroup("E-mail", tfEmail));
-        grid.add(ModernUI.createFieldGroup("Telefone", tfTelefone));
+        tfLogradouro = ModernUI.createInput("Rua");
+        tfBairro = ModernUI.createInput("Bairro");
+        tfCidade = ModernUI.createInput("Cidade");
+        tfUf = ModernUI.createInput("UF");
 
-        JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        actions.setOpaque(false);
+        grid.add(ModernUI.createLabelGroup("ID", tfId));
+        grid.add(ModernUI.createLabelGroup("Nome", tfNome));
+        grid.add(ModernUI.createLabelGroup("CPF", tfCpf));
+        grid.add(ModernUI.createLabelGroup("Email", tfEmail));
+        grid.add(ModernUI.createLabelGroup("Telefone", tfTelefone));
+        grid.add(ModernUI.createLabelGroup("CEP", cepP));
+        grid.add(ModernUI.createLabelGroup("Rua", tfLogradouro));
+        grid.add(ModernUI.createLabelGroup("Bairro", tfBairro));
+        grid.add(ModernUI.createLabelGroup("Cidade", tfCidade));
+        grid.add(ModernUI.createLabelGroup("UF", tfUf));
+        grid.add(new JLabel("")); grid.add(new JLabel(""));
 
-        JButton btnClear = ModernUI.createButton("Novo / Limpar", false);
-        JButton btnDel = ModernUI.createButton("Excluir", false);
-        btnDel.setForeground(ModernUI.COL_ACCENT_DANGER);
-        btnSave = ModernUI.createButton("Salvar", true);
+        JPanel btns = new JPanel(new FlowLayout(FlowLayout.RIGHT)); btns.setOpaque(false);
+        JButton btnClr = ModernUI.createOutlineButton("Limpar");
+        JButton btnDel = ModernUI.createButton("Excluir"); btnDel.setBackground(ModernUI.DANGER);
+        JButton btnSav = ModernUI.createButton("Salvar");
 
-        btnSave.addActionListener(e -> onSave());
-        btnClear.addActionListener(e -> clear());
-        btnDel.addActionListener(e -> onDelete());
+        btnClr.addActionListener(e -> clear());
+        btnDel.addActionListener(e -> delete());
+        btnSav.addActionListener(e -> save());
 
-        actions.add(btnClear);
-        actions.add(btnDel);
-        actions.add(btnSave);
+        btns.add(btnClr); btns.add(btnDel); btns.add(btnSav);
+        form.add(grid, BorderLayout.CENTER);
+        form.add(btns, BorderLayout.SOUTH);
 
-        formCard.add(grid, BorderLayout.CENTER);
-        formCard.add(actions, BorderLayout.SOUTH);
-
-        JPanel tableCard = ModernUI.createCard();
-        tableCard.setLayout(new BorderLayout());
-        tableCard.setBorder(new EmptyBorder(0, 0, 0, 0));
-
-        tableModel = new DefaultTableModel(new Object[]{"ID", "Nome", "CPF", "Email"}, 0) {
-            @Override
-            public boolean isCellEditable(int row, int column) { return false; }
-        };
-
+        JPanel list = ModernUI.createCard(); list.setLayout(new BorderLayout());
+        tableModel = new DefaultTableModel(new Object[]{"ID", "Nome", "CPF", "Cidade", "Pontos"},0);
         table = new JTable(tableModel);
         ModernUI.styleTable(table);
+        list.add(new JScrollPane(table));
+        table.getSelectionModel().addListSelectionListener(e -> { if(!e.getValueIsAdjusting()) pop(); });
 
-        JScrollPane scroll = new JScrollPane(table);
-        scroll.setBorder(BorderFactory.createEmptyBorder());
-        scroll.getViewport().setBackground(Color.WHITE);
-        tableCard.add(scroll, BorderLayout.CENTER);
-
-        content.add(formCard, BorderLayout.NORTH);
-        content.add(tableCard, BorderLayout.CENTER);
-
-        main.add(content, BorderLayout.CENTER);
+        JSplitPane split = new JSplitPane(JSplitPane.VERTICAL_SPLIT, form, list);
+        split.setOpaque(false); split.setBorder(null); split.setDividerLocation(350);
+        main.add(split, BorderLayout.CENTER);
         setContentPane(main);
-
-        table.getSelectionModel().addListSelectionListener(e -> {
-            if (!e.getValueIsAdjusting()) {
-                populate();
-            }
-        });
     }
 
-    private JFormattedTextField createMaskedField(String mask) {
+    private void buscarCep() {
+        new Thread(() -> {
+            String[] r = ExternalService.getEnderecoViaCep(tfCep.getText());
+            if(r!=null) SwingUtilities.invokeLater(() -> {
+                tfLogradouro.setText(r[0]); tfBairro.setText(r[1]); tfCidade.setText(r[2]); tfUf.setText(r[3]);
+            });
+        }).start();
+    }
+
+    private void save() {
         try {
-            MaskFormatter mf = new MaskFormatter(mask);
-            mf.setPlaceholderCharacter('_');
-            mf.setValueContainsLiteralCharacters(false);
-            JFormattedTextField ftf = new JFormattedTextField(mf);
-            ftf.setFont(ModernUI.FONT_BODY);
-            ftf.setBorder(BorderFactory.createCompoundBorder(
-                    BorderFactory.createLineBorder(ModernUI.COL_BORDER),
-                    new EmptyBorder(8, 12, 8, 12)
-            ));
-            return ftf;
-        } catch (Exception e) {
-            return new JFormattedTextField();
-        }
+            Cliente c = new Cliente();
+            String id = tfId.getText();
+            if(!id.equals("Auto") && !id.isEmpty()) c.setId(Integer.parseInt(id));
+            c.setNome(tfNome.getText()); c.setCpf(tfCpf.getText()); c.setEmail(tfEmail.getText());
+            c.setTelefone(tfTelefone.getText()); c.setCep(tfCep.getText());
+            c.setLogradouro(tfLogradouro.getText()); c.setBairro(tfBairro.getText());
+            c.setCidade(tfCidade.getText()); c.setUf(tfUf.getText());
+
+            if(c.getId()==null) repo.insert(c);
+            else {
+                repo.findById(c.getId()).ifPresent(o -> c.setPontosFidelidade(o.getPontosFidelidade()));
+                repo.update(c);
+            }
+            loadData(); clear(); JOptionPane.showMessageDialog(this, "Salvo!");
+        } catch(Exception e) { JOptionPane.showMessageDialog(this, "Erro: "+e.getMessage()); }
+    }
+
+    private void delete() {
+        if(!tfId.getText().equals("Auto")) { repo.delete(Integer.parseInt(tfId.getText())); loadData(); clear(); }
+    }
+
+    private void pop() {
+        int r = table.getSelectedRow();
+        if(r>=0) repo.findById((int)tableModel.getValueAt(r,0)).ifPresent(c -> {
+            tfId.setText(String.valueOf(c.getId())); tfNome.setText(c.getNome());
+            tfCpf.setText(c.getCpf()); tfEmail.setText(c.getEmail()); tfTelefone.setText(c.getTelefone());
+            tfCep.setText(c.getCep()); tfLogradouro.setText(c.getLogradouro());
+            tfBairro.setText(c.getBairro()); tfCidade.setText(c.getCidade()); tfUf.setText(c.getUf());
+            lblPontos.setText("Pontos: " + c.getPontosFidelidade());
+        });
     }
 
     private void loadData() {
         tableModel.setRowCount(0);
-        repo.findAll().forEach(c -> tableModel.addRow(new Object[]{c.getId(), c.getNome(), c.getCpf(), c.getEmail()}));
-    }
-
-    private void populate() {
-        int selectedRow = table.getSelectedRow();
-        if (selectedRow == -1) return;
-
-        try {
-            Object idObj = table.getValueAt(selectedRow, 0);
-            int id = Integer.parseInt(idObj.toString());
-
-            repo.findById(id).ifPresent(c -> {
-                tfId.setText(String.valueOf(c.getId()));
-                tfNome.setText(c.getNome());
-
-                tfCpf.setValue(null);
-                tfCpf.setText(c.getCpf());
-
-                tfEmail.setText(c.getEmail());
-
-                tfTelefone.setValue(null);
-                tfTelefone.setText(c.getTelefone());
-
-                btnSave.setText("Atualizar");
-            });
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            JOptionPane.showMessageDialog(this, "Erro ao carregar cliente: " + e.getMessage());
-        }
-    }
-
-    private void onSave() {
-        try {
-            Integer id = null;
-            if (!tfId.getText().trim().isEmpty() && !tfId.getText().equals("Automático")) {
-                id = Integer.parseInt(tfId.getText().trim());
-            }
-
-            Cliente c = new Cliente(
-                    id,
-                    tfNome.getText(),
-                    tfCpf.getText(),
-                    tfEmail.getText(),
-                    tfTelefone.getText()
-            );
-
-            if (c.getId() == null) {
-                repo.insert(c);
-                JOptionPane.showMessageDialog(this, "Cliente cadastrado!");
-            } else {
-                repo.update(c);
-                JOptionPane.showMessageDialog(this, "Cliente atualizado!");
-            }
-
-            loadData();
-            clear();
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(this, "Erro ao salvar: " + e.getMessage());
-        }
-    }
-
-    private void onDelete() {
-        if (!tfId.getText().isEmpty() && !tfId.getText().equals("Automático")) {
-            int confirm = JOptionPane.showConfirmDialog(this, "Tem certeza que deseja excluir?", "Excluir", JOptionPane.YES_NO_OPTION);
-            if (confirm == JOptionPane.YES_OPTION) {
-                repo.delete(Integer.parseInt(tfId.getText()));
-                loadData();
-                clear();
-            }
-        } else {
-            JOptionPane.showMessageDialog(this, "Selecione um cliente na tabela para excluir.");
-        }
+        repo.findAll().forEach(c -> tableModel.addRow(new Object[]{c.getId(), c.getNome(), c.getCpf(), c.getCidade(), c.getPontosFidelidade()}));
     }
 
     private void clear() {
-        tfId.setText("Automático");
-        tfNome.setText("");
-        tfCpf.setValue(null); tfCpf.setText("");
-        tfEmail.setText("");
-        tfTelefone.setValue(null); tfTelefone.setText("");
-
-        table.clearSelection();
-        btnSave.setText("Salvar");
+        tfId.setText("Auto"); tfNome.setText("Nome"); tfCpf.setValue(null); tfCpf.setText("");
+        tfEmail.setText("Email"); tfTelefone.setValue(null); tfTelefone.setText("");
+        tfCep.setText(""); tfLogradouro.setText(""); tfBairro.setText(""); tfCidade.setText(""); tfUf.setText("");
+        lblPontos.setText("Pontos: 0"); table.clearSelection();
     }
 }
