@@ -15,84 +15,85 @@ public class LoginFrame extends JFrame {
     private JPasswordField txtPass;
 
     public LoginFrame() {
-        ModernUI.applyTheme(this);
-        setTitle("Agência++ Login");
-        setSize(1024, 768);
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        ModernUI.setupTheme(this);
+        setTitle("Login | Agência++");
+        setSize(900, 600);
         setLocationRelativeTo(null);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setResizable(false);
+        initUI();
+    }
 
-        JPanel bg = ModernUI.createGradientPanel();
-        bg.setLayout(new GridBagLayout());
+    private void initUI() {
+        JPanel main = new JPanel(new GridLayout(1, 2));
 
-        JPanel card = ModernUI.createCard();
-        card.setPreferredSize(new Dimension(420, 520));
-        card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
-
-        JLabel lblIcon = new JLabel("🚀");
-        lblIcon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 60));
-        lblIcon.setAlignmentX(CENTER_ALIGNMENT);
-
-        JLabel lblTitle = new JLabel("Bem-vindo");
-        lblTitle.setFont(ModernUI.FONT_HERO);
-        lblTitle.setForeground(ModernUI.COL_TEXT_MAIN);
-        lblTitle.setAlignmentX(CENTER_ALIGNMENT);
-
-        JLabel lblSub = new JLabel("Faça login para continuar");
-        lblSub.setFont(ModernUI.FONT_BODY);
-        lblSub.setForeground(ModernUI.COL_TEXT_LIGHT);
-        lblSub.setAlignmentX(CENTER_ALIGNMENT);
-
-        txtUser = ModernUI.createInput("Usuário");
-        txtUser.setMaximumSize(new Dimension(400, 50));
-
-        txtPass = new JPasswordField() {
+        JPanel leftPanel = new JPanel() {
             @Override
             protected void paintComponent(Graphics g) {
-                super.paintComponent(g);
                 Graphics2D g2 = (Graphics2D) g;
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(new Color(209, 213, 219));
-                g2.setStroke(new BasicStroke(1));
-                g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 12, 12);
+                GradientPaint gp = new GradientPaint(0, 0, ModernUI.BRAND, getWidth(), getHeight(), ModernUI.ACCENT);
+                g2.setPaint(gp);
+                g2.fillRect(0, 0, getWidth(), getHeight());
+
+                g2.setColor(new Color(255,255,255,30));
+                g2.fillOval(-50, -50, 300, 300);
+                g2.fillOval(getWidth()-200, getHeight()-200, 400, 400);
+
+                g2.setColor(Color.WHITE);
+                g2.setFont(new Font("SansSerif", Font.BOLD, 40));
+                g2.drawString("Agência++", 40, getHeight()/2);
+                g2.setFont(new Font("SansSerif", Font.PLAIN, 16));
+                g2.drawString("Sua próxima viagem começa aqui.", 40, getHeight()/2 + 40);
             }
         };
-        txtPass.setBorder(new EmptyBorder(10, 15, 10, 15));
-        txtPass.setFont(ModernUI.FONT_BODY);
-        txtPass.setMaximumSize(new Dimension(400, 50));
 
-        JButton btnLogin = ModernUI.createButton("ACESSAR SISTEMA", true);
-        btnLogin.setMaximumSize(new Dimension(400, 50));
-        btnLogin.addActionListener(e -> doLogin());
+        JPanel rightPanel = new JPanel();
+        rightPanel.setLayout(new BoxLayout(rightPanel, BoxLayout.Y_AXIS));
+        rightPanel.setBackground(ModernUI.COL_CARD);
+        rightPanel.setBorder(new EmptyBorder(80, 50, 80, 50));
 
-        JButton btnExit = ModernUI.createButton("Sair", false);
-        btnExit.setMaximumSize(new Dimension(400, 50));
-        btnExit.setForeground(ModernUI.COL_ACCENT_DANGER);
-        btnExit.addActionListener(e -> System.exit(0));
+        JLabel title = new JLabel("Bem-vindo");
+        title.setFont(ModernUI.FONT_BIG);
+        title.setForeground(ModernUI.COL_TEXT_H1);
+        title.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        txtUser = ModernUI.createInput("Usuário");
+        txtUser.setMaximumSize(new Dimension(400, 35));
+        txtUser.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        txtPass = new JPasswordField();
+        txtPass.setFont(ModernUI.FONT_PLAIN);
+        txtPass.setForeground(ModernUI.COL_TEXT_H1);
+        txtPass.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(ModernUI.COL_BORDER),
+                new EmptyBorder(5,10,5,10)
+        ));
+        txtPass.setBackground(ModernUI.COL_INPUT);
+        txtPass.setMaximumSize(new Dimension(400, 35));
+        txtPass.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        JButton btn = ModernUI.createButton("ENTRAR NA CONTA");
+        btn.setMaximumSize(new Dimension(400, 40));
+        btn.setAlignmentX(Component.LEFT_ALIGNMENT);
+        btn.addActionListener(e -> doLogin());
+
+        rightPanel.add(title);
+        rightPanel.add(Box.createVerticalStrut(40));
+        rightPanel.add(ModernUI.createLabelGroup("USUÁRIO", txtUser));
+        rightPanel.add(Box.createVerticalStrut(20));
+        rightPanel.add(ModernUI.createLabelGroup("SENHA", txtPass));
+        rightPanel.add(Box.createVerticalStrut(40));
+        rightPanel.add(btn);
 
         KeyAdapter ka = new KeyAdapter() {
-            public void keyPressed(KeyEvent e) {
-                if (e.getKeyCode() == KeyEvent.VK_ENTER) doLogin();
-            }
+            public void keyPressed(KeyEvent e) { if(e.getKeyCode() == KeyEvent.VK_ENTER) doLogin(); }
         };
-        txtUser.addKeyListener(ka);
-        txtPass.addKeyListener(ka);
+        txtUser.addKeyListener(ka); txtPass.addKeyListener(ka);
 
-        card.add(Box.createVerticalStrut(20));
-        card.add(lblIcon);
-        card.add(Box.createVerticalStrut(10));
-        card.add(lblTitle);
-        card.add(lblSub);
-        card.add(Box.createVerticalStrut(40));
-        card.add(ModernUI.createFieldGroup("Usuário", txtUser));
-        card.add(Box.createVerticalStrut(15));
-        card.add(ModernUI.createFieldGroup("Senha", txtPass));
-        card.add(Box.createVerticalStrut(30));
-        card.add(btnLogin);
-        card.add(Box.createVerticalStrut(10));
-        card.add(btnExit);
-
-        bg.add(card);
-        setContentPane(bg);
+        main.add(leftPanel);
+        main.add(rightPanel);
+        setContentPane(main);
     }
 
     private void doLogin() {
@@ -101,7 +102,7 @@ public class LoginFrame extends JFrame {
             dispose();
             new MainFrame(u).setVisible(true);
         } else {
-            JOptionPane.showMessageDialog(this, "Credenciais inválidas.", "Erro", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Acesso Negado");
         }
     }
 }
