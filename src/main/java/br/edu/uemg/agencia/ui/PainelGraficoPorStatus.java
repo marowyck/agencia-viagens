@@ -10,66 +10,75 @@ public class PainelGraficoPorStatus extends JPanel {
 
     public PainelGraficoPorStatus(Map<String, Map<String, Integer>> dados) {
         this.dados = dados;
-        setPreferredSize(new Dimension(800, 300));
-        setBackground(ModernUI.COL_SURFACE);
-        setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        setOpaque(false);
+        setBorder(BorderFactory.createEmptyBorder(20, 20, 40, 20));
     }
 
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
-        if (dados == null || dados.isEmpty()) {
-            g.setColor(ModernUI.COL_TEXT_LIGHT);
-            g.drawString("Sem dados para exibir", 20, 20);
-            return;
-        }
+        if (dados == null || dados.isEmpty()) return;
 
         Graphics2D g2 = (Graphics2D) g;
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
         int w = getWidth();
         int h = getHeight();
-        int paddingBottom = 40;
-        int paddingTop = 30;
-        int paddingSide = 40;
 
+        int paddingBottom = 30;
+        int paddingTop = 10;
         int areaH = h - paddingBottom - paddingTop;
 
-        Color[] cores = { ModernUI.COL_ACCENT_SUCCESS, ModernUI.COL_ACCENT_WARNING, ModernUI.COL_ACCENT_DANGER };
+        Color[] cores = { ModernUI.SUCCESS, ModernUI.BRAND, ModernUI.DANGER };
         String[] statusOrdem = { "Confirmada", "Pendente", "Cancelada" };
 
         int qtdDestinos = dados.size();
-        int larguraDestino = (w - 2 * paddingSide) / qtdDestinos;
-        int espacoEntre = 15;
+        int barMaxWidth = 60;
+        int spaceAvailable = w / qtdDestinos;
+        int barWidth = Math.min(spaceAvailable - 20, barMaxWidth);
 
-        int x = paddingSide;
+        int x = 20;
+
+        int maxGlobal = 0;
+        for (var entry : dados.values()) {
+            int total = entry.values().stream().mapToInt(Integer::intValue).sum();
+            if (total > maxGlobal) maxGlobal = total;
+        }
+        if (maxGlobal == 0) maxGlobal = 1;
+
         for (Map.Entry<String, Map<String, Integer>> entry : dados.entrySet()) {
             String destino = entry.getKey();
             Map<String, Integer> valores = entry.getValue();
-            int y = h - paddingBottom;
 
-            int total = valores.values().stream().mapToInt(Integer::intValue).sum();
-            int maxTotal = total == 0 ? 1 : total;
+            int y = h - paddingBottom;
 
             int corIndex = 0;
             for (String status : statusOrdem) {
                 int qtd = valores.getOrDefault(status, 0);
-                int altura = (int) (((double) qtd / maxTotal) * areaH);
-                if (qtd > 0 && altura < 5) altura = 5;
 
-                y -= altura;
-                g2.setColor(cores[corIndex % cores.length]);
-                g2.fillRect(x, y, larguraDestino - espacoEntre, altura);
+                int altura = (int) (((double) qtd / maxGlobal) * areaH);
+
+                if (qtd > 0) {
+                    if(altura < 4) altura = 4;
+                    y -= altura;
+
+                    g2.setColor(cores[corIndex % cores.length]);
+                    g2.fillRoundRect(x, y, barWidth, altura, 6, 6);
+                }
                 corIndex++;
             }
 
-            g2.setColor(ModernUI.COL_TEXT_LIGHT);
-            g2.setFont(new Font("Segoe UI", Font.PLAIN, 11));
-            String labelCurto = destino.length() > 10 ? destino.substring(0, 8) + "..." : destino;
-            int lblW = g2.getFontMetrics().stringWidth(labelCurto);
-            g2.drawString(labelCurto, x + (larguraDestino - espacoEntre)/2 - lblW/2, h - paddingBottom + 20);
+            g2.setColor(ModernUI.COL_TEXT_BODY);
+            g2.setFont(new Font("SansSerif", Font.PLAIN, 11));
 
-            x += larguraDestino;
+            String lbl = destino.length() > 10 ? destino.substring(0, 8) + ".." : destino;
+
+            int txtW = g2.getFontMetrics().stringWidth(lbl);
+            int txtX = x + (barWidth / 2) - (txtW / 2);
+
+            g2.drawString(lbl, txtX, h - paddingBottom + 20);
+
+            x += spaceAvailable;
         }
     }
 }
