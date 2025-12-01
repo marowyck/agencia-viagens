@@ -1,6 +1,7 @@
 package br.edu.uemg.agencia.repos;
 
 import br.edu.uemg.agencia.modelo.Cliente;
+import br.edu.uemg.agencia.modelo.Reserva;
 import br.edu.uemg.agencia.util.Validator;
 
 import java.sql.*;
@@ -122,12 +123,26 @@ public class ClienteRepo {
         try (Connection conn = ConnectionFactory.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, "%" + query.toLowerCase() + "%");
-            try (ResultSet rs = ps.executeQuery()) {
+            try(ResultSet rs = ps.executeQuery()){
                 while (rs.next()) list.add(mapRow(rs));
             }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
+        } catch (SQLException e) { e.printStackTrace(); }
+        return list;
+    }
+
+    public List<Reserva> findHistorico(int clienteId) {
+        List<Reserva> list = new ArrayList<>();
+        String sql = "SELECT id FROM reserva WHERE cliente_id = ? ORDER BY data_reserva DESC";
+        ReservaRepo reservaRepo = new ReservaRepo();
+        try (Connection conn = ConnectionFactory.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, clienteId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    reservaRepo.findById(rs.getInt("id")).ifPresent(list::add);
+                }
+            }
+        } catch (SQLException e) { e.printStackTrace(); }
         return list;
     }
 
