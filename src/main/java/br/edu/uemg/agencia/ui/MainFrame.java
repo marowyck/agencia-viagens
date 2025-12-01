@@ -3,6 +3,7 @@ package br.edu.uemg.agencia.ui;
 import br.edu.uemg.agencia.auth.PermissionUtil;
 import br.edu.uemg.agencia.auth.Sessao;
 import br.edu.uemg.agencia.modelo.Usuario;
+import br.edu.uemg.agencia.servico.ReservaService;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -25,11 +26,21 @@ public class MainFrame extends JFrame {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
         initUI();
+        iniciarRobo();
+    }
+
+    private void iniciarRobo() {
+        new Thread(() -> {
+            try {
+                new ReservaService().verificarExpiracao();
+            } catch (Exception e) {
+                System.err.println("Falha no robô de expiração: " + e.getMessage());
+            }
+        }).start();
     }
 
     private void initUI() {
         ModernUI.setupTheme(this);
-
         JPanel layout = new JPanel(new BorderLayout());
         layout.setBackground(ModernUI.COL_BG);
 
@@ -46,13 +57,6 @@ public class MainFrame extends JFrame {
 
         sidebar.add(logo);
         sidebar.add(Box.createVerticalStrut(50));
-
-        JLabel menuLabel = new JLabel("MENU PRINCIPAL");
-        menuLabel.setFont(new Font("SansSerif", Font.BOLD, 10));
-        menuLabel.setForeground(ModernUI.COL_TEXT_BODY);
-        menuLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        sidebar.add(menuLabel);
-        sidebar.add(Box.createVerticalStrut(20));
 
         sidebar.add(createSidebarItem("Clientes", "👤", e -> new ClienteForm().setVisible(true)));
         sidebar.add(Box.createVerticalStrut(10));
@@ -96,7 +100,7 @@ public class MainFrame extends JFrame {
         JLabel title = new JLabel("Olá, " + usuario.getNome() + " 👋");
         title.setFont(ModernUI.FONT_BIG);
         title.setForeground(ModernUI.COL_TEXT_H1);
-        JLabel sub = new JLabel("Aqui está o resumo da sua agência hoje.");
+        JLabel sub = new JLabel("Bem-vindo ao sistema de gestão.");
         sub.setFont(ModernUI.FONT_PLAIN);
         sub.setForeground(ModernUI.COL_TEXT_BODY);
         texts.add(title); texts.add(sub);
@@ -130,6 +134,21 @@ public class MainFrame extends JFrame {
         layout.add(content, BorderLayout.CENTER);
 
         setContentPane(layout);
+
+        sidebar.add(createSidebarItem("Clientes", "👤", e -> new ClienteForm().setVisible(true)));
+        sidebar.add(Box.createVerticalStrut(10));
+        sidebar.add(createSidebarItem("Pacotes", "🌎", e -> new PacoteForm().setVisible(true)));
+        sidebar.add(Box.createVerticalStrut(10));
+        sidebar.add(createSidebarItem("Reservas", "📅", e -> new ReservaForm().setVisible(true)));
+        sidebar.add(Box.createVerticalStrut(10));
+        sidebar.add(createSidebarItem("Analytics", "📊", e -> {
+            if(PermissionUtil.requireAdmin(this, "Relatórios", "Dash")) new RelatorioFrame().setVisible(true);
+        }));
+
+        if (PermissionUtil.isAdmin()) {
+            sidebar.add(Box.createVerticalStrut(10));
+            sidebar.add(createSidebarItem("Auditoria", "🛡️", e -> new AuditFrame().setVisible(true)));
+        }
     }
 
     private JButton createSidebarItem(String text, String icon, java.awt.event.ActionListener act) {

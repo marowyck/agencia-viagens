@@ -21,7 +21,7 @@ public class ClienteForm extends JFrame {
 
     public ClienteForm() {
         ModernUI.setupTheme(this);
-        setTitle("Clientes");
+        setTitle("Gestão de Clientes");
         setSize(1100, 800);
         setLocationRelativeTo(null);
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
@@ -85,6 +85,9 @@ public class ClienteForm extends JFrame {
         grid.add(new JLabel("")); grid.add(new JLabel(""));
 
         JPanel btns = new JPanel(new FlowLayout(FlowLayout.RIGHT)); btns.setOpaque(false);
+
+        JButton btnFav = ModernUI.createOutlineButton("⭐ Ver Favoritos");
+        JButton btnHist = ModernUI.createOutlineButton("📜 Histórico");
         JButton btnClr = ModernUI.createOutlineButton("Limpar");
         JButton btnDel = ModernUI.createButton("Excluir"); btnDel.setBackground(ModernUI.DANGER);
         JButton btnSav = ModernUI.createButton("Salvar");
@@ -92,8 +95,15 @@ public class ClienteForm extends JFrame {
         btnClr.addActionListener(e -> clear());
         btnDel.addActionListener(e -> delete());
         btnSav.addActionListener(e -> save());
+        btnHist.addActionListener(e -> showHistory());
+        btnFav.addActionListener(e -> showFavoritos());
 
-        btns.add(btnClr); btns.add(btnDel); btns.add(btnSav);
+        btns.add(btnFav);
+        btns.add(btnHist);
+        btns.add(btnClr);
+        btns.add(btnDel);
+        btns.add(btnSav);
+
         form.add(grid, BorderLayout.CENTER);
         form.add(btns, BorderLayout.SOUTH);
 
@@ -108,6 +118,44 @@ public class ClienteForm extends JFrame {
         split.setOpaque(false); split.setBorder(null); split.setDividerLocation(350);
         main.add(split, BorderLayout.CENTER);
         setContentPane(main);
+    }
+
+    private void showFavoritos() {
+        if(tfId.getText().equals("Auto")) {
+            JOptionPane.showMessageDialog(this, "Selecione um cliente primeiro.");
+            return;
+        }
+        int id = Integer.parseInt(tfId.getText());
+        Cliente c = new Cliente();
+        c.setId(id);
+        c.setNome(tfNome.getText());
+
+        new FavoritosFrame(c).setVisible(true);
+    }
+
+    private void showHistory() {
+        if(tfId.getText().equals("Auto")) {
+            JOptionPane.showMessageDialog(this, "Selecione um cliente primeiro.");
+            return;
+        }
+        int id = Integer.parseInt(tfId.getText());
+        var lista = repo.findHistorico(id);
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("HISTÓRICO DE COMPRAS:\n\n");
+        if(lista.isEmpty()) sb.append("Nenhuma reserva encontrada.");
+        else {
+            for(var r : lista) {
+                sb.append(String.format("• [#%d] Data: %s | Pacote: %s | Total: R$ %.2f (%s)\n",
+                        r.getId(), r.getDataReserva().toLocalDate(),
+                        r.getPacote().getDestino(), r.getValorTotal(), r.getStatus()));
+            }
+        }
+
+        JTextArea area = new JTextArea(sb.toString());
+        area.setFont(new Font("Monospaced", Font.PLAIN, 12));
+        area.setRows(15); area.setColumns(50); area.setEditable(false);
+        JOptionPane.showMessageDialog(this, new JScrollPane(area), "Histórico do Cliente", JOptionPane.INFORMATION_MESSAGE);
     }
 
     private void buscarCep() {

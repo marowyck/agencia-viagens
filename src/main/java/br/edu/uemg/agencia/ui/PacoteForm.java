@@ -3,12 +3,18 @@ package br.edu.uemg.agencia.ui;
 import br.edu.uemg.agencia.auth.PermissionUtil;
 import br.edu.uemg.agencia.auth.Sessao;
 import br.edu.uemg.agencia.modelo.*;
+import br.edu.uemg.agencia.repos.FavoritoRepo;
 import br.edu.uemg.agencia.repos.PacoteRepo;
 import br.edu.uemg.agencia.util.ExternalService;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableRowSorter;
 import java.awt.*;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
+import java.util.ArrayList;
+import java.util.List;
 
 public class PacoteForm extends JFrame {
     private final PacoteRepo repo = new PacoteRepo();
@@ -16,12 +22,13 @@ public class PacoteForm extends JFrame {
     private JComboBox<String> cbTipo;
     private DefaultTableModel tableModel;
     private JTable table;
-    private JButton btnExcluir;
+    private TableRowSorter<DefaultTableModel> sorter;
+    private JButton btnExcluir, btnSave, btnClr;
 
     public PacoteForm() {
         ModernUI.setupTheme(this);
         setTitle("Pacotes");
-        setSize(1000, 700);
+        setSize(1000, 750);
         setLocationRelativeTo(null);
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         initUI();
@@ -67,34 +74,121 @@ public class PacoteForm extends JFrame {
         JPanel btns = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         btns.setOpaque(false);
         JButton btnMap = ModernUI.createOutlineButton("Mapa");
-        JButton btnSave = ModernUI.createButton("Salvar");
+        JButton btnCompare = ModernUI.createOutlineButton("⚖ Comparar");
+        JButton btnFav = ModernUI.createOutlineButton("❤ Favoritar");
+
+        btnSave = ModernUI.createButton("Salvar");
         btnExcluir = ModernUI.createButton("Excluir"); btnExcluir.setBackground(ModernUI.DANGER);
-        JButton btnClr = ModernUI.createOutlineButton("Novo");
+        btnClr = ModernUI.createOutlineButton("Novo");
 
         btnMap.addActionListener(e -> ExternalService.abrirNoMapa(tfDestino.getText()));
+        btnCompare.addActionListener(e -> compare());
+        btnFav.addActionListener(e -> favorite());
         btnSave.addActionListener(e -> save());
         btnExcluir.addActionListener(e -> delete());
         btnClr.addActionListener(e -> clear());
         cbTipo.addActionListener(e -> toggle());
 
-        btns.add(btnMap); btns.add(btnClr); btns.add(btnExcluir); btns.add(btnSave);
+        btns.add(btnFav); btns.add(btnCompare); btns.add(btnMap);
+        btns.add(Box.createHorizontalStrut(20));
+        btns.add(btnClr); btns.add(btnExcluir); btns.add(btnSave);
+
         form.add(grid, BorderLayout.CENTER);
         form.add(btns, BorderLayout.SOUTH);
 
-        JPanel tableP = ModernUI.createCard();
-        tableP.setLayout(new BorderLayout());
-        tableModel = new DefaultTableModel(new Object[]{"ID", "Tipo", "Destino", "Valor"},0);
+        JPanel listCard = ModernUI.createCard();
+        listCard.setLayout(new BorderLayout(0, 10));
+
+        JPanel filterPanel = new JPanel(new BorderLayout(10,0));
+        filterPanel.setOpaque(false);
+        JTextField txtFilter = ModernUI.createInput("🔎 Filtrar por Destino, Tipo ou Valor...");
+        filterPanel.add(txtFilter, BorderLayout.CENTER);
+
+        listCard.add(filterPanel, BorderLayout.NORTH);
+
+        tableModel = new DefaultTableModel(new Object[]{"ID", "Tipo", "Destino", "Valor"},0) {
+            @Override public boolean isCellEditable(int r, int c) { return false; }
+        };
         table = new JTable(tableModel);
         ModernUI.styleTable(table);
-        tableP.add(new JScrollPane(table));
+
+        sorter = new TableRowSorter<>(tableModel);
+        table.setRowSorter(sorter);
+
+        txtFilter.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyReleased(KeyEvent e) {
+                String text = txtFilter.getText();
+                if (text.trim().length() == 0 || text.equals("🔎 Filtrar por Destino, Tipo ou Valor...")) {
+                    sorter.setRowFilter(null);
+                } else {
+                    sorter.setRowFilter(RowFilter.regexFilter("(?i)" + text));
+                }
+            }
+        });
+
+        listCard.add(new JScrollPane(table), BorderLayout.CENTER);
         table.getSelectionModel().addListSelectionListener(e -> { if(!e.getValueIsAdjusting()) pop(); });
 
-        JSplitPane split = new JSplitPane(JSplitPane.VERTICAL_SPLIT, form, tableP);
-        split.setOpaque(false); split.setBorder(null); split.setDividerLocation(300);
+        JSplitPane split = new JSplitPane(JSplitPane.VERTICAL_SPLIT, form, listCard);
+        split.setOpaque(false); split.setBorder(null); split.setDividerLocation(320);
         main.add(split, BorderLayout.CENTER);
         setContentPane(main);
         toggle();
         applyPermissions();
+    }
+
+    private void applyPermissions() {
+        boolean isAdmin = PermissionUtil.isAdmin();
+
+        btnSave.setEnabled(isAdmin);
+        btnExcluir.setEnabled(isAdmin);
+        btnClr.setEnabled(isAdmin);
+
+        if (!isAdmin) {
+            tfDestino.setEditable(false);
+            tfDuracao.setEditable(false);
+            tfValor.setEditable(false);
+            tfMoeda.setEditable(false);
+            tfEmb.setEditable(false);
+            cbTipo.setEnabled(false);
+
+            btnSave.setText("🔒 Leitura");
+            btnSave.setBackground(Color.GRAY);
+        }
+    }
+
+    private void favorite() {
+        if(tfId.getText().equals("Auto")) {
+            JOptionPane.showMessageDialog(this, "Selecione um pacote.");
+            return;
+        }
+        String idStr = JOptionPane.showInputDialog(this, "Digite o ID do Cliente para favoritar:");
+        if(idStr != null && !idStr.isEmpty()) {
+            try {
+                int clienteId = Integer.parseInt(idStr);
+                int pacoteId = Integer.parseInt(tfId.getText());
+                new FavoritoRepo().adicionar(clienteId, pacoteId);
+                JOptionPane.showMessageDialog(this, "Pacote favoritado com sucesso!");
+            } catch(NumberFormatException e) {
+                JOptionPane.showMessageDialog(this, "ID inválido.");
+            }
+        }
+    }
+
+    private void compare() {
+        int[] rows = table.getSelectedRows();
+        if(rows.length < 2 || rows.length > 3) {
+            JOptionPane.showMessageDialog(this, "Selecione entre 2 e 3 pacotes na tabela para comparar (Segure CTRL).");
+            return;
+        }
+        List<Pacote> list = new ArrayList<>();
+        for(int r : rows) {
+            int modelRow = table.convertRowIndexToModel(r);
+            int id = (int) tableModel.getValueAt(modelRow, 0);
+            repo.findById(id).ifPresent(list::add);
+        }
+        new ComparadorFrame(list).setVisible(true);
     }
 
     private void toggle() {
@@ -115,6 +209,7 @@ public class PacoteForm extends JFrame {
     }
 
     private void save() {
+        if (!PermissionUtil.isAdmin()) return;
         try {
             Pacote p;
             String dest = tfDestino.getText();
@@ -137,7 +232,8 @@ public class PacoteForm extends JFrame {
     private void pop() {
         int r = table.getSelectedRow();
         if(r >= 0) {
-            repo.findById((int)tableModel.getValueAt(r,0)).ifPresent(p -> {
+            int modelRow = table.convertRowIndexToModel(r);
+            repo.findById((int)tableModel.getValueAt(modelRow,0)).ifPresent(p -> {
                 tfId.setText(String.valueOf(p.getId()));
                 tfDestino.setText(p.getDestino());
                 tfDuracao.setText(String.valueOf(p.getDuracao()));
@@ -154,7 +250,7 @@ public class PacoteForm extends JFrame {
     }
 
     private void delete() {
-        if(PermissionUtil.requireAdmin(this, "Excluir", "Pacotes") && !tfId.getText().equals("Auto")) {
+        if(!tfId.getText().equals("Auto")) {
             repo.delete(Integer.parseInt(tfId.getText()));
             loadData(); clear();
         }
@@ -163,9 +259,5 @@ public class PacoteForm extends JFrame {
     private void clear() {
         tfId.setText("Auto"); tfDestino.setText("Destino"); tfValor.setText("0.0");
         table.clearSelection();
-    }
-
-    private void applyPermissions() {
-        if(btnExcluir!=null) btnExcluir.setEnabled(Sessao.getPerfil()!=null && Sessao.getPerfil().equals("admin"));
     }
 }
