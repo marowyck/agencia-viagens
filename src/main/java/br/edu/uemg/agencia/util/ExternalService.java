@@ -53,7 +53,7 @@ public class ExternalService {
         if (destino == null || destino.trim().isEmpty()) return;
         try {
             String query = URLEncoder.encode(destino, StandardCharsets.UTF_8.toString());
-            String mapUrl = "http://googleusercontent.com/maps.google.com/?q=" + query;
+            String mapUrl = "https://www.google.com/maps/search/?api=1&query=" + URLEncoder.encode(query, "UTF-8");
             if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
                 Desktop.getDesktop().browse(new URI(mapUrl));
             } else {
