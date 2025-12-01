@@ -6,8 +6,6 @@ public class Cliente {
     private String cpf;
     private String email;
     private String telefone;
-
-    // Novos campos
     private String cep;
     private String logradouro;
     private String bairro;
