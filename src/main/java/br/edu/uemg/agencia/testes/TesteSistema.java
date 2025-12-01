@@ -32,7 +32,7 @@ public class TesteSistema {
         PacoteNacional pSim = new PacoteNacional(3, "Sim", 1, 1000.0);
         pSim.setImpostoTurismo(0.0);
 
-        double val = service.simularValorFinal(pSim, true, LocalDate.now());
+        double val = service.simularValorFinal(pSim, true, 1, LocalDate.now());
 
         if (Math.abs(val - 1025.0) < 0.01) System.out.println("[OK] Simulação Cartão");
         else System.out.println("[FAIL] Simulação Cartão: " + val);
