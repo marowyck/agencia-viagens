@@ -64,7 +64,7 @@ public class DatabaseInitializer {
                     "CREATE TABLE IF NOT EXISTS pagamento (" +
                             "id INTEGER PRIMARY KEY AUTOINCREMENT," +
                             "reserva_id INTEGER UNIQUE NOT NULL," +
-                            "metodo TEXT CHECK(metodo IN ('pix','cartao')) NOT NULL," +
+                            "metodo TEXT NOT NULL," +
                             "taxa REAL," +
                             "data_pagamento TEXT NOT NULL," +
                             "created_at TEXT DEFAULT CURRENT_TIMESTAMP," +
@@ -108,10 +108,7 @@ public class DatabaseInitializer {
             );
 
             st.executeUpdate("CREATE INDEX IF NOT EXISTS idx_reserva_cliente ON reserva(cliente_id);");
-            st.executeUpdate("CREATE INDEX IF NOT EXISTS idx_reserva_pacote ON reserva(pacote_id);");
-            st.executeUpdate("CREATE INDEX IF NOT EXISTS idx_pagamento_reserva ON pagamento(reserva_id);");
             st.executeUpdate("CREATE INDEX IF NOT EXISTS idx_cliente_cpf ON cliente(cpf);");
-            st.executeUpdate("CREATE INDEX IF NOT EXISTS idx_usuario_username ON usuario(username);");
 
             String adminHash = "240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9";
             String atendenteHash = "e94e143d3a999c2004bed70fdc93ae37470fb3c3c5cd328fa20fbd053e65c4f9";
@@ -119,15 +116,12 @@ public class DatabaseInitializer {
             st.executeUpdate(
                     "INSERT INTO usuario(username, password_hash, perfil, nome) VALUES " +
                             "('admin', '" + adminHash + "', 'admin', 'Administrador') " +
-                            "ON CONFLICT(username) DO UPDATE SET " +
-                            "password_hash = excluded.password_hash, perfil = excluded.perfil, nome = excluded.nome;"
+                            "ON CONFLICT(username) DO UPDATE SET password_hash=excluded.password_hash;"
             );
-
             st.executeUpdate(
                     "INSERT INTO usuario(username, password_hash, perfil, nome) VALUES " +
                             "('atendente', '" + atendenteHash + "', 'atendente', 'Atendente Padrão') " +
-                            "ON CONFLICT(username) DO UPDATE SET " +
-                            "password_hash = excluded.password_hash, perfil = excluded.perfil, nome = excluded.nome;"
+                            "ON CONFLICT(username) DO UPDATE SET password_hash=excluded.password_hash;"
             );
 
             System.out.println("✔ Banco atualizado com sucesso.");
