@@ -104,4 +104,6 @@ Para o primeiro acesso, utilize as contas pré-configuradas:
 
 ---
 
+Autores: Maria Olívia Cassucci, Matheus Vicente, Victor Gmeiner, Gustavo Amaral
+
 
